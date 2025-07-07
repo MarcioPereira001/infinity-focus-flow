@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { CheckoutModal } from "@/components/modal/checkout-modal";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { AppLayout } from "@/components/layout/app-layout";
 import Landing from "./pages/Landing";
 import Dashboard from "./pages/Dashboard";
 import ProjectKanban from "./pages/ProjectKanban";
@@ -30,7 +31,11 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     return <Navigate to="/" replace />;
   }
 
-  return <>{children}</>;
+  return (
+    <AppLayout>
+      {children}
+    </AppLayout>
+  );
 }
 
 // App Content Component
