@@ -1,105 +1,76 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useNavigate } from "react-router-dom";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Check, Crown, Zap } from "lucide-react";
+import { CheckCircle, AlertTriangle } from "lucide-react";
 
 interface CheckoutModalProps {
   isOpen: boolean;
-  daysRemaining?: number;
+  daysRemaining: number;
 }
 
-const features = [
-  "Tarefas e projetos ilimitados",
-  "Colaboração em tempo real",
-  "Dashboard avançado de analytics",
-  "Sistema completo de gamificação",
-  "Suporte prioritário 24/7",
-  "Backup automático na nuvem",
-  "Integrações com outras ferramentas"
-];
-
-export function CheckoutModal({ isOpen, daysRemaining = 0 }: CheckoutModalProps) {
-  const handleUpgrade = () => {
-    alert("Redirecionamento para checkout - Funcionalidade será implementada em breve!");
+export function CheckoutModal({ isOpen, daysRemaining }: CheckoutModalProps) {
+  const navigate = useNavigate();
+  
+  const handleUpgradeClick = () => {
+    navigate('/checkout');
   };
-
+  
+  // Se não estiver aberto, não renderiza nada
+  if (!isOpen) return null;
+  
+  // Determinar se é uma expiração ou um aviso
+  const isExpired = daysRemaining <= 0;
+  
   return (
     <Dialog open={isOpen} onOpenChange={() => {}}>
-      <DialogContent className="sm:max-w-md [&>button]:hidden">
-        <DialogHeader className="text-center space-y-4">
-          <div className="mx-auto w-16 h-16 bg-gradient-to-br from-primary to-secondary rounded-full flex items-center justify-center">
-            <Crown className="w-8 h-8 text-primary-foreground" />
-          </div>
-          
-          <div className="space-y-2">
-            <DialogTitle className="text-2xl">
-              {daysRemaining > 0 ? "Seu teste está acabando!" : "Seu teste expirou"}
-            </DialogTitle>
-            
-            {daysRemaining > 0 ? (
-              <p className="text-muted-foreground">
-                Restam apenas <span className="font-semibold text-warning">{daysRemaining} dias</span> do seu período de teste gratuito.
-              </p>
+      <DialogContent className="sm:max-w-[425px]" onEscapeKeyDown={(e) => e.preventDefault()} onPointerDownOutside={(e) => e.preventDefault()}>
+        <DialogHeader>
+          <div className="flex items-center justify-center mb-2">
+            {isExpired ? (
+              <AlertTriangle className="h-12 w-12 text-warning" />
             ) : (
-              <p className="text-muted-foreground">
-                Continue aproveitando todos os recursos da Infinity Concentration
-              </p>
+              <Badge variant="outline" className="bg-warning/10 text-warning px-3 py-1">
+                {daysRemaining} dias restantes
+              </Badge>
             )}
           </div>
+          <DialogTitle className="text-center text-xl">
+            {isExpired ? "Seu período de teste expirou" : "Seu período de teste está acabando"}
+          </DialogTitle>
+          <DialogDescription className="text-center">
+            {isExpired 
+              ? "Para continuar usando todos os recursos do Infinity Focus Flow, faça upgrade para o plano Pro." 
+              : `Você tem ${daysRemaining} dias restantes no seu período de teste. Faça upgrade agora para não perder acesso aos recursos premium.`
+            }
+          </DialogDescription>
         </DialogHeader>
-
-        <div className="space-y-6">
-          {/* Pricing Card */}
-          <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-secondary/5">
-            <CardHeader className="text-center pb-4">
-              <div className="flex items-center justify-center space-x-2">
-                <CardTitle className="text-xl">Plano Pro</CardTitle>
-                <Badge className="bg-primary">Mais Popular</Badge>
-              </div>
-              <div className="space-y-1">
-                <div className="flex items-baseline justify-center space-x-1">
-                  <span className="text-3xl font-bold">R$ 29,90</span>
-                  <span className="text-muted-foreground">/mês</span>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  ou R$ 299,90/ano (economize 2 meses)
-                </p>
-              </div>
-            </CardHeader>
-            
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                {features.map((feature, index) => (
-                  <div key={index} className="flex items-center space-x-2">
-                    <Check className="h-4 w-4 text-success" />
-                    <span className="text-sm">{feature}</span>
-                  </div>
-                ))}
-              </div>
-
-              <Button 
-                className="w-full btn-gradient text-lg py-6"
-                onClick={handleUpgrade}
-              >
-                <Zap className="mr-2 h-5 w-5" />
-                Fazer Upgrade Agora
-              </Button>
-              
-              <p className="text-xs text-center text-muted-foreground">
-                Cancelamento a qualquer momento • Garantia de 30 dias
-              </p>
-            </CardContent>
-          </Card>
-
-          {/* Benefits highlight */}
-          <div className="text-center space-y-2">
-            <p className="text-sm font-medium">🚀 Desbloqueie todo o seu potencial</p>
-            <p className="text-xs text-muted-foreground">
-              Junte-se a mais de 10.000 profissionais que transformaram sua produtividade
-            </p>
+        
+        <div className="space-y-4 py-4">
+          <div className="rounded-lg border p-4">
+            <h4 className="font-medium mb-2 flex items-center">
+              <CheckCircle className="h-4 w-4 mr-2 text-primary" />
+              Plano Pro - R$ 29,90/mês
+            </h4>
+            <ul className="text-sm text-muted-foreground space-y-1">
+              <li>• Tarefas e projetos ilimitados</li>
+              <li>• Colaboração em tempo real</li>
+              <li>• Dashboard avançado</li>
+              <li>• Suporte prioritário</li>
+            </ul>
           </div>
         </div>
+        
+        <DialogFooter className="flex flex-col sm:flex-col gap-2">
+          <Button onClick={handleUpgradeClick} className="w-full btn-gradient">
+            Fazer Upgrade Agora
+          </Button>
+          {!isExpired && (
+            <Button variant="outline" className="w-full" onClick={() => navigate('/dashboard')}>
+              Continuar com o Teste Gratuito
+            </Button>
+          )}
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
