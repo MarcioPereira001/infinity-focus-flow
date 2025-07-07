@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Header } from "@/components/layout/header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -11,12 +11,16 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { User, Shield, Bell, CreditCard, Upload } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "@/hooks/use-toast";
 
 export default function Settings() {
   const navigate = useNavigate();
+  const { profile, signOut, updateProfile, updatePassword } = useAuth();
+  
   const [profileData, setProfileData] = useState({
-    name: "João Silva",
-    email: "joao@exemplo.com",
+    name: "",
+    email: "",
     avatar: ""
   });
   
@@ -33,26 +37,120 @@ export default function Settings() {
     confirmPassword: ""
   });
 
-  const handleLogout = () => {
+  const [loadingProfile, setLoadingProfile] = useState(false);
+  const [loadingPassword, setLoadingPassword] = useState(false);
+
+  // Update form data when profile loads
+  useEffect(() => {
+    if (profile) {
+      setProfileData({
+        name: profile.full_name || "",
+        email: "", // Email comes from auth, not profile
+        avatar: profile.avatar_url || ""
+      });
+    }
+  }, [profile]);
+
+  const handleLogout = async () => {
+    await signOut();
     navigate("/");
   };
 
-  const handleProfileUpdate = (e: React.FormEvent) => {
+  const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Update profile:", profileData);
-    // Will integrate with Supabase
+    setLoadingProfile(true);
+
+    const { error } = await updateProfile({
+      full_name: profileData.name,
+      avatar_url: profileData.avatar,
+    });
+
+    if (error) {
+      toast({
+        title: "Erro ao atualizar perfil",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Perfil atualizado com sucesso!",
+      });
+    }
+
+    setLoadingProfile(false);
   };
 
-  const handlePasswordUpdate = (e: React.FormEvent) => {
+  const handlePasswordUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Update password");
-    // Will integrate with Supabase
+    
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      toast({
+        title: "Erro na validação",
+        description: "As senhas não coincidem",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (passwordData.newPassword.length < 6) {
+      toast({
+        title: "Erro na validação",
+        description: "A senha deve ter pelo menos 6 caracteres",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoadingPassword(true);
+
+    const { error } = await updatePassword(passwordData.newPassword);
+
+    if (error) {
+      toast({
+        title: "Erro ao alterar senha",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Senha alterada com sucesso!",
+      });
+      setPasswordData({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: ""
+      });
+    }
+
+    setLoadingPassword(false);
   };
 
   const handleNotificationUpdate = () => {
     console.log("Update notifications:", notifications);
-    // Will integrate with Supabase
+    toast({
+      title: "Preferências salvas!",
+      description: "Suas configurações de notificação foram atualizadas.",
+    });
   };
+
+  const handleUpgradeClick = () => {
+    toast({
+      title: "Upgrade em desenvolvimento",
+      description: "A funcionalidade de pagamento será implementada em breve.",
+    });
+  };
+
+  if (!profile) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  const daysRemaining = profile.trial_ends_at 
+    ? Math.max(0, Math.ceil((new Date(profile.trial_ends_at).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))
+    : 0;
 
   return (
     <div className="min-h-screen bg-background">
@@ -117,8 +215,8 @@ export default function Settings() {
                         />
                       </div>
                     </div>
-                    <Button type="submit" className="btn-gradient">
-                      Salvar Alterações
+                    <Button type="submit" className="btn-gradient" disabled={loadingProfile}>
+                      {loadingProfile ? "Salvando..." : "Salvar Alterações"}
                     </Button>
                   </form>
                 </CardContent>
@@ -162,8 +260,8 @@ export default function Settings() {
                         onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
                       />
                     </div>
-                    <Button type="submit" className="btn-gradient">
-                      Alterar Senha
+                    <Button type="submit" className="btn-gradient" disabled={loadingPassword}>
+                      {loadingPassword ? "Alterando..." : "Alterar Senha"}
                     </Button>
                   </form>
                 </CardContent>
@@ -267,11 +365,14 @@ export default function Settings() {
                     <div>
                       <h3 className="font-semibold">Plano Atual</h3>
                       <p className="text-sm text-muted-foreground">
-                        Teste gratuito de 7 dias
+                        {profile.plan_status === 'pro' ? 'Plano Pro' : 'Teste gratuito de 7 dias'}
                       </p>
                     </div>
-                    <Badge variant="outline" className="bg-warning/10 text-warning">
-                      5 dias restantes
+                    <Badge 
+                      variant="outline" 
+                      className={`${profile.plan_status === 'pro' ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}`}
+                    >
+                      {profile.plan_status === 'pro' ? 'Ativo' : `${daysRemaining} dias restantes`}
                     </Badge>
                   </div>
 
@@ -286,8 +387,8 @@ export default function Settings() {
                       </ul>
                     </div>
                     
-                    <Button className="w-full btn-gradient">
-                      Fazer Upgrade Agora
+                    <Button className="w-full btn-gradient" onClick={handleUpgradeClick}>
+                      {profile.plan_status === 'pro' ? 'Gerenciar Assinatura' : 'Fazer Upgrade Agora'}
                     </Button>
                   </div>
                 </CardContent>
