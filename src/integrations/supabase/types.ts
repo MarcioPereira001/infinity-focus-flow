@@ -153,7 +153,6 @@ export type Database = {
       }
       tasks: {
         Row: {
-          completed: boolean | null
           created_at: string
           description: string | null
           due_date: string | null
@@ -168,7 +167,6 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          completed?: boolean | null
           created_at?: string
           description?: string | null
           due_date?: string | null
@@ -183,7 +181,6 @@ export type Database = {
           user_id: string
         }
         Update: {
-          completed?: boolean | null
           created_at?: string
           description?: string | null
           due_date?: string | null
