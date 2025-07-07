@@ -59,10 +59,6 @@ export default function Dashboard() {
         description: error.message,
         variant: "destructive",
       });
-    } else {
-      toast({
-        title: "Tarefa deletada com sucesso!",
-      });
     }
   };
 
@@ -232,12 +228,6 @@ export default function Dashboard() {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
-  );
-}
-          </DialogContent>
-        </Dialog>
-      </main>
     </div>
   );
 }
