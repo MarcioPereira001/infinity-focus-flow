@@ -12,6 +12,7 @@ import Projects from "./pages/Projects";
 import ProjectKanban from "./pages/ProjectKanban";
 import Analytics from "./pages/Analytics";
 import Settings from "./pages/Settings";
+import Checkout from "./pages/Checkout";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -74,6 +75,11 @@ function AppContent() {
         <Route path="/settings" element={
           <ProtectedRoute>
             <Settings />
+          </ProtectedRoute>
+        } />
+        <Route path="/checkout" element={
+          <ProtectedRoute>
+            <Checkout />
           </ProtectedRoute>
         } />
         <Route path="*" element={<NotFound />} />
