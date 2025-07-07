@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { Header } from "@/components/layout/header";
 import { TaskItem, Task } from "@/components/dashboard/task-item";
 import { TaskFilters, TimeFilter, TaskTab } from "@/components/dashboard/task-filters";
 import { Button } from "@/components/ui/button";
@@ -28,11 +27,6 @@ export default function Dashboard() {
     description: "",
     priority: "medium" as "low" | "medium" | "high",
   });
-
-  const handleLogout = async () => {
-    await signOut();
-    navigate("/");
-  };
 
   const handleToggleComplete = async (taskId: string) => {
     const task = tasks.find(t => t.id === taskId);
@@ -130,117 +124,117 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header isLoggedIn onLogout={handleLogout} />
-      
-      <main className="container mx-auto px-4 py-8">
-        <div className="space-y-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold">Dashboard</h1>
-              <p className="text-muted-foreground">
-                Gerencie suas tarefas e acompanhe seu progresso
-              </p>
-            </div>
-            
+    <div className="space-y-8">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Dashboard</h1>
+          <p className="text-muted-foreground">
+            Gerencie suas tarefas e acompanhe seu progresso
+          </p>
+        </div>
+        
+        <Button className="btn-gradient" onClick={() => setIsNewTaskModalOpen(true)}>
+          <Plus className="w-4 h-4 mr-2" />
+          Nova Tarefa
+        </Button>
+      </div>
+
+      <TaskFilters
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        timeFilter={timeFilter}
+        onTimeFilterChange={setTimeFilter}
+        dateRange={dateRange}
+        onDateRangeChange={setDateRange}
+      />
+
+      <div className="space-y-4">
+        {filteredTasks.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-muted-foreground mb-4">
+              Nenhuma tarefa encontrada
+            </p>
             <Button className="btn-gradient" onClick={() => setIsNewTaskModalOpen(true)}>
               <Plus className="w-4 h-4 mr-2" />
-              Nova Tarefa
+              Criar primeira tarefa
             </Button>
           </div>
+        ) : (
+          filteredTasks.map((task) => (
+            <TaskItem
+              key={task.id}
+              task={task}
+              onToggleComplete={handleToggleComplete}
+              onEdit={handleEditTask}
+              onDelete={handleDeleteTask}
+            />
+          ))
+        )}
+      </div>
 
-          <TaskFilters
-            activeTab={activeTab}
-            onTabChange={setActiveTab}
-            timeFilter={timeFilter}
-            onTimeFilterChange={setTimeFilter}
-            dateRange={dateRange}
-            onDateRangeChange={setDateRange}
-          />
-
+      {/* New Task Modal */}
+      <Dialog open={isNewTaskModalOpen} onOpenChange={setIsNewTaskModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Nova Tarefa</DialogTitle>
+          </DialogHeader>
+          
           <div className="space-y-4">
-            {filteredTasks.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-muted-foreground mb-4">
-                  Nenhuma tarefa encontrada
-                </p>
-                <Button className="btn-gradient" onClick={() => setIsNewTaskModalOpen(true)}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Criar primeira tarefa
-                </Button>
-              </div>
-            ) : (
-              filteredTasks.map((task) => (
-                <TaskItem
-                  key={task.id}
-                  task={task}
-                  onToggleComplete={handleToggleComplete}
-                  onEdit={handleEditTask}
-                  onDelete={handleDeleteTask}
-                />
-              ))
-            )}
-          </div>
-        </div>
-
-        {/* New Task Modal */}
-        <Dialog open={isNewTaskModalOpen} onOpenChange={setIsNewTaskModalOpen}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Nova Tarefa</DialogTitle>
-            </DialogHeader>
-            
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="task-title">Título</Label>
-                <Input
-                  id="task-title"
-                  value={newTaskData.title}
-                  onChange={(e) => setNewTaskData({ ...newTaskData, title: e.target.value })}
-                  placeholder="Digite o título da tarefa"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="task-description">Descrição</Label>
-                <Textarea
-                  id="task-description"
-                  value={newTaskData.description}
-                  onChange={(e) => setNewTaskData({ ...newTaskData, description: e.target.value })}
-                  placeholder="Descreva a tarefa (opcional)"
-                  rows={3}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Prioridade</Label>
-                <Select 
-                  value={newTaskData.priority} 
-                  onValueChange={(value: any) => setNewTaskData({ ...newTaskData, priority: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="low">Baixa</SelectItem>
-                    <SelectItem value="medium">Média</SelectItem>
-                    <SelectItem value="high">Alta</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex justify-end space-x-2">
-                <Button 
-                  variant="outline" 
-                  onClick={() => setIsNewTaskModalOpen(false)}
-                >
-                  Cancelar
-                </Button>
-                <Button onClick={handleCreateTask} className="btn-gradient">
-                  Criar Tarefa
-                </Button>
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="task-title">Título</Label>
+              <Input
+                id="task-title"
+                value={newTaskData.title}
+                onChange={(e) => setNewTaskData({ ...newTaskData, title: e.target.value })}
+                placeholder="Digite o título da tarefa"
+              />
             </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="task-description">Descrição</Label>
+              <Textarea
+                id="task-description"
+                value={newTaskData.description}
+                onChange={(e) => setNewTaskData({ ...newTaskData, description: e.target.value })}
+                placeholder="Descreva a tarefa (opcional)"
+                rows={3}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Prioridade</Label>
+              <Select 
+                value={newTaskData.priority} 
+                onValueChange={(value: any) => setNewTaskData({ ...newTaskData, priority: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">Baixa</SelectItem>
+                  <SelectItem value="medium">Média</SelectItem>
+                  <SelectItem value="high">Alta</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex justify-end space-x-2">
+              <Button 
+                variant="outline" 
+                onClick={() => setIsNewTaskModalOpen(false)}
+              >
+                Cancelar
+              </Button>
+              <Button onClick={handleCreateTask} className="btn-gradient">
+                Criar Tarefa
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
           </DialogContent>
         </Dialog>
       </main>
