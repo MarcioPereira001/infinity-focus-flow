@@ -8,6 +8,7 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { AppLayout } from "@/components/layout/app-layout";
 import Landing from "./pages/Landing";
 import Dashboard from "./pages/Dashboard";
+import Projects from "./pages/Projects";
 import ProjectKanban from "./pages/ProjectKanban";
 import Analytics from "./pages/Analytics";
 import Settings from "./pages/Settings";
@@ -53,6 +54,11 @@ function AppContent() {
         <Route path="/dashboard" element={
           <ProtectedRoute>
             <Dashboard />
+          </ProtectedRoute>
+        } />
+        <Route path="/projects" element={
+          <ProtectedRoute>
+            <Projects />
           </ProtectedRoute>
         } />
         <Route path="/projects/:id" element={
