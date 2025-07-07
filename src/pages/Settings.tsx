@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -8,23 +9,31 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { User, Shield, Bell, CreditCard, Upload } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { User, Shield, Bell, CreditCard, Upload, Info } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
+
+// Tipo para as configurações de notificação
+interface NotificationSettings {
+  taskReminders: boolean;
+  projectUpdates: boolean;
+  emailNotifications: boolean;
+  reminderTime: string;
+}
 
 export default function Settings() {
   const navigate = useNavigate();
   const { profile, signOut, updateProfile, updatePassword } = useAuth();
   
+  const [activeTab, setActiveTab] = useState("profile");
   const [profileData, setProfileData] = useState({
     name: "",
     email: "",
     avatar: ""
   });
   
-  const [notifications, setNotifications] = useState({
+  const [notifications, setNotifications] = useState<NotificationSettings>({
     taskReminders: true,
     projectUpdates: true,
     emailNotifications: false,
@@ -39,17 +48,52 @@ export default function Settings() {
 
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [loadingPassword, setLoadingPassword] = useState(false);
+  const [loadingNotifications, setLoadingNotifications] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [loadingData, setLoadingData] = useState(true);
 
-  // Update form data when profile loads
+  // Carregar dados do perfil e notificações
   useEffect(() => {
-    if (profile) {
-      setProfileData({
-        name: profile.full_name || "",
-        email: "", // Email comes from auth, not profile
-        avatar: profile.avatar_url || ""
-      });
-    }
+    const loadProfileData = async () => {
+      if (!profile) return;
+
+      try {
+        setLoadingData(true);
+        
+        // Carregar dados do perfil
+        setProfileData({
+          name: profile.full_name || "",
+          email: "", // Email comes from auth, not profile
+          avatar: profile.avatar_url || ""
+        });
+
+        // Carregar configurações de notificação
+        const { data, error } = await supabase
+          .from('user_settings')
+          .select('*')
+          .eq('user_id', profile.user_id)
+          .single();
+
+        if (error && error.code !== 'PGRST116') { // PGRST116 = not found
+          throw error;
+        }
+
+        if (data) {
+          setNotifications({
+            taskReminders: data.task_reminders || true,
+            projectUpdates: data.project_updates || true,
+            emailNotifications: data.email_notifications || false,
+            reminderTime: data.reminder_time || "10"
+          });
+        }
+      } catch (error) {
+        console.error('Error loading profile data:', error);
+      } finally {
+        setLoadingData(false);
+      }
+    };
+
+    loadProfileData();
   }, [profile]);
 
   const handleLogout = async () => {
@@ -66,6 +110,26 @@ export default function Settings() {
       let avatarUrl = profileData.avatar;
       
       if (selectedFile) {
+        // Verificar se o bucket existe
+        const { data: buckets } = await supabase.storage.listBuckets();
+        const bucketExists = buckets?.some(bucket => bucket.name === 'user-content');
+        
+        if (!bucketExists) {
+          // Criar o bucket se não existir
+          const { error: createBucketError } = await supabase.storage.createBucket('user-content', {
+            public: true
+          });
+          
+          if (createBucketError) {
+            toast({
+              title: "Erro ao criar bucket de armazenamento",
+              description: "Por favor, entre em contato com o suporte",
+              variant: "destructive",
+            });
+            throw createBucketError;
+          }
+        }
+        
         const fileExt = selectedFile.name.split('.').pop();
         const fileName = `${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
         const filePath = `avatars/${fileName}`;
@@ -162,10 +226,77 @@ export default function Settings() {
     }
   };
 
-  const handleNotificationUpdate = () => {
+  const handleNotificationUpdate = async () => {
+    if (!profile) return;
+    
+    setLoadingNotifications(true);
+    
     try {
-      // Here we would save notification preferences to Supabase
-      // For now, just show a success message
+      // Verificar se já existe um registro para o usuário
+      const { data, error: fetchError } = await supabase
+        .from('user_settings')
+        .select('id')
+        .eq('user_id', profile.user_id)
+        .single();
+        
+      if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 = not found
+        throw fetchError;
+      }
+      
+      // Preparar dados para salvar
+      const settingsData = {
+        user_id: profile.user_id,
+        task_reminders: notifications.taskReminders,
+        project_updates: notifications.projectUpdates,
+        email_notifications: notifications.emailNotifications,
+        reminder_time: notifications.reminderTime,
+        updated_at: new Date().toISOString()
+      };
+      
+      let error;
+      
+      if (data) {
+        // Atualizar registro existente
+        const result = await supabase
+          .from('user_settings')
+          .update(settingsData)
+          .eq('user_id', profile.user_id);
+          
+        error = result.error;
+      } else {
+        // Criar novo registro
+        const result = await supabase
+          .from('user_settings')
+          .insert({
+            ...settingsData,
+            created_at: new Date().toISOString()
+          });
+          
+        error = result.error;
+      }
+      
+      if (error) throw error;
+      
+      // Solicitar permissão para notificações do navegador
+      if (notifications.taskReminders || notifications.projectUpdates) {
+        if ('Notification' in window) {
+          const permission = await Notification.requestPermission();
+          
+          if (permission === 'granted') {
+            toast({
+              title: "Notificações ativadas",
+              description: "Você receberá notificações sobre suas tarefas e projetos",
+            });
+          } else {
+            toast({
+              title: "Permissão de notificação negada",
+              description: "Você não receberá notificações no navegador",
+              variant: "destructive",
+            });
+          }
+        }
+      }
+
       toast({
         title: "Preferências salvas!",
         description: "Suas configurações de notificação foram atualizadas.",
@@ -177,14 +308,13 @@ export default function Settings() {
         description: error.message,
         variant: "destructive",
       });
+    } finally {
+      setLoadingNotifications(false);
     }
   };
 
   const handleUpgradeClick = () => {
-    toast({
-      title: "Upgrade em desenvolvimento",
-      description: "A funcionalidade de pagamento será implementada em breve.",
-    });
+    navigate('/checkout');
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -227,7 +357,7 @@ export default function Settings() {
     }
   };
 
-  if (!profile) {
+  if (loadingData || !profile) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
@@ -248,7 +378,7 @@ export default function Settings() {
         </p>
       </div>
 
-      <Tabs defaultValue="profile" className="space-y-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="profile">Perfil</TabsTrigger>
           <TabsTrigger value="security">Segurança</TabsTrigger>
@@ -443,8 +573,17 @@ export default function Settings() {
                 </Select>
               </div>
 
-              <Button onClick={handleNotificationUpdate} className="btn-gradient">
-                Salvar Preferências
+              <div className="flex items-center text-sm text-muted-foreground mb-4">
+                <Info className="h-4 w-4 mr-2" />
+                <p>Você precisará permitir notificações do navegador para receber alertas.</p>
+              </div>
+
+              <Button 
+                onClick={handleNotificationUpdate} 
+                className="btn-gradient"
+                disabled={loadingNotifications}
+              >
+                {loadingNotifications ? "Salvando..." : "Salvar Preferências"}
               </Button>
             </CardContent>
           </Card>
