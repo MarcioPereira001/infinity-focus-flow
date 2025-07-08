@@ -7,7 +7,8 @@ import {
   Settings, 
   Menu,
   X,
-  LogOut
+  LogOut,
+  Trophy // Adicionado a importação do ícone Trophy
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
