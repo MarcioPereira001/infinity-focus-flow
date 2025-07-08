@@ -29,9 +29,10 @@ interface TaskItemProps {
   onToggleComplete?: (taskId: string) => void;
   onEdit?: (taskId: string) => void;
   onDelete?: (taskId: string) => void;
+  onClick?: () => void;
 }
 
-export function TaskItem({ task, onToggleComplete, onEdit, onDelete }: TaskItemProps) {
+export function TaskItem({ task, onToggleComplete, onEdit, onDelete, onClick }: TaskItemProps) {
   const [isCompleted, setIsCompleted] = useState(task.completed);
 
   const handleToggleComplete = () => {
@@ -66,11 +67,14 @@ export function TaskItem({ task, onToggleComplete, onEdit, onDelete }: TaskItemP
   };
 
   return (
-    <div className={cn(
-      "card-soft p-4 transition-all duration-200",
-      getPriorityClass(task.priority),
-      isCompleted && "opacity-60"
-    )}>
+    <div 
+      className={cn(
+        "card-soft p-4 transition-all duration-200 cursor-pointer",
+        getPriorityClass(task.priority),
+        isCompleted && "opacity-60"
+      )}
+      onClick={onClick}
+    >
       <div className="flex items-start space-x-4">
         <Checkbox
           checked={isCompleted}

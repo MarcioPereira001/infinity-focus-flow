@@ -136,9 +136,8 @@ export default function Projects() {
     try {
       const { data, error } = await supabase
         .from('tasks')
-        .select('project_id, count')
-        .in('project_id', projectIds)
-        .group('project_id');
+        .select('project_id')
+        .in('project_id', projectIds);
         
       if (error) throw error;
       
@@ -146,7 +145,10 @@ export default function Projects() {
       const taskCountsByProject: Record<string, number> = {};
       
       data?.forEach(item => {
-        taskCountsByProject[item.project_id] = parseInt(item.count);
+        if (!taskCountsByProject[item.project_id]) {
+          taskCountsByProject[item.project_id] = 0;
+        }
+        taskCountsByProject[item.project_id]++;
       });
       
       setProjectTaskCounts(taskCountsByProject);
