@@ -21,12 +21,14 @@ export function useProjects() {
     if (!user) return;
 
     try {
+      // Get projects where user is owner or member
       const { data, error } = await supabase
         .from('projects')
         .select(`
           *,
           project_members!inner(role)
-        `);
+        `)
+        .or(`owner_id.eq.${user.id},project_members.user_id.eq.${user.id}`);
 
       if (error) throw error;
       setProjects(data || []);
@@ -40,20 +42,26 @@ export function useProjects() {
   const createProject = async (projectData: Omit<ProjectInsert, 'owner_id'>) => {
     if (!user) return { error: new Error('No user logged in') };
 
-    const { data, error } = await supabase
-      .from('projects')
-      .insert({
-        ...projectData,
-        owner_id: user.id,
-      })
-      .select()
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from('projects')
+        .insert({
+          ...projectData,
+          owner_id: user.id,
+        })
+        .select()
+        .single();
 
-    if (!error && data) {
-      setProjects(prev => [...prev, data]);
+      if (error) throw error;
+
+      if (data) {
+        setProjects(prev => [...prev, data]);
+      }
+
+      return { data, error };
+    } catch (error) {
+      return { error };
     }
-
-    return { data, error };
   };
 
   const updateProject = async (projectId: string, updates: ProjectUpdate) => {
@@ -173,14 +181,30 @@ export function useProject(projectId?: string) {
     if (!projectId) return { error: new Error('No project ID') };
 
     try {
-      // First, find the user by email
-      const { data: profile, error: profileError } = await supabase
+      // Find user by email from profiles table
+      const { data: profiles, error: profileError } = await supabase
         .from('profiles')
-        .select('user_id')
-        .eq('user_id', email) // This should be improved to search by email
-        .single();
+        .select('user_id, full_name')
+        .ilike('full_name', `%${email}%`); // Search by name or improve with email field
 
       if (profileError) throw profileError;
+      if (!profiles || profiles.length === 0) {
+        return { error: new Error('User not found') };
+      }
+
+      const profile = profiles[0];
+
+      // Check if user is already a member
+      const { data: existingMember } = await supabase
+        .from('project_members')
+        .select('id')
+        .eq('project_id', projectId)
+        .eq('user_id', profile.user_id)
+        .single();
+
+      if (existingMember) {
+        return { error: new Error('User is already a member') };
+      }
 
       const { data, error } = await supabase
         .from('project_members')
@@ -203,6 +227,19 @@ export function useProject(projectId?: string) {
     } catch (error) {
       return { error };
     }
+  };
+
+  const removeMember = async (memberId: string) => {
+    const { error } = await supabase
+      .from('project_members')
+      .delete()
+      .eq('id', memberId);
+
+    if (!error) {
+      setMembers(prev => prev.filter(member => member.id !== memberId));
+    }
+
+    return { error };
   };
 
   const updateColumn = async (columnId: string, updates: Partial<KanbanColumn>) => {
@@ -267,6 +304,7 @@ export function useProject(projectId?: string) {
     members,
     loading,
     addMember,
+    removeMember,
     updateColumn,
     refetch: fetchProject,
   };

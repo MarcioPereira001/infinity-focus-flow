@@ -22,13 +22,17 @@ export function useTasks(projectId?: string) {
           *,
           responsible:profiles!tasks_responsible_id_fkey(full_name),
           project:projects(name)
-        `);
+        `)
+        .eq('user_id', user.id);
 
       if (projectId) {
         query = query.eq('project_id', projectId);
+      } else {
+        // For dashboard, filter out project tasks to show only personal tasks
+        query = query.is('project_id', null);
       }
 
-      const { data, error } = await query;
+      const { data, error } = await query.order('created_at', { ascending: false });
 
       if (error) throw error;
       setTasks(data || []);
@@ -37,6 +41,41 @@ export function useTasks(projectId?: string) {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Filter tasks by criteria for Dashboard
+  const getFilteredTasks = (filter: 'today' | 'upcoming' | 'overdue' | 'completed' | 'all') => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    return tasks.filter(task => {
+      switch (filter) {
+        case 'today':
+          if (!task.due_date) return false;
+          const taskDate = new Date(task.due_date);
+          taskDate.setHours(0, 0, 0, 0);
+          return taskDate.getTime() === today.getTime();
+        
+        case 'upcoming':
+          if (!task.due_date) return false;
+          const upcomingDate = new Date(task.due_date);
+          upcomingDate.setHours(0, 0, 0, 0);
+          return upcomingDate.getTime() > today.getTime();
+        
+        case 'overdue':
+          if (!task.due_date || task.status === 'completed') return false;
+          const overdueDate = new Date(task.due_date);
+          overdueDate.setHours(0, 0, 0, 0);
+          return overdueDate.getTime() < today.getTime();
+        
+        case 'completed':
+          return task.status === 'completed';
+        
+        case 'all':
+        default:
+          return true;
+      }
+    });
   };
 
   const createTask = async (taskData: Omit<TaskInsert, 'user_id'>) => {
@@ -129,5 +168,6 @@ export function useTasks(projectId?: string) {
     updateTask,
     deleteTask,
     refetch: fetchTasks,
+    getFilteredTasks,
   };
 }
