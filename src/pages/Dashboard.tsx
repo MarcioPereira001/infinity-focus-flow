@@ -1,295 +1,337 @@
-import { useState } from "react";
-import { TaskItem, Task } from "@/components/dashboard/task-item";
-import { TaskFilters, TimeFilter, TaskTab } from "@/components/dashboard/task-filters";
+import { useState, useEffect } from "react";
+import { AppLayout } from "@/components/layout/app-layout";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus } from "lucide-react";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TaskItem } from "@/components/dashboard/task-item";
+import { TaskFormModal } from "@/components/modal/task-form-modal";
 import { useAuth } from "@/contexts/AuthContext";
-import { useTasks } from "@/hooks/useTasks";
+import { supabase } from "@/integrations/supabase/client";
+import { Plus, Calendar, CheckCircle2, Clock } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 export default function Dashboard() {
-  const { profile } = useAuth();
-  const { tasks, loading, createTask, updateTask, deleteTask } = useTasks();
-  
-  const [activeTab, setActiveTab] = useState<TaskTab>("all");
-  const [timeFilter, setTimeFilter] = useState<TimeFilter>("daily");
-  const [dateRange, setDateRange] = useState<{ from: Date; to?: Date }>();
+  const { user } = useAuth();
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("all");
   const [isNewTaskModalOpen, setIsNewTaskModalOpen] = useState(false);
-  const [newTaskData, setNewTaskData] = useState({
-    title: "",
-    description: "",
-    priority: "medium" as "low" | "medium" | "high",
-  });
-
-  const handleToggleComplete = async (taskId: string) => {
-    try {
-      const task = tasks.find(t => t.id === taskId);
-      if (!task) return;
-
-      const newStatus = task.status === 'Concluído' ? 'Novo' : 'Concluído';
+  const [selectedTask, setSelectedTask] = useState<any>(null);
+  
+  // Buscar tarefas
+  useEffect(() => {
+    if (!user) return;
+    
+    const fetchTasks = async () => {
+      setIsLoading(true);
       
-      const { error } = await updateTask(taskId, { status: newStatus });
-      
-      if (error) {
+      try {
+        const { data, error } = await supabase
+          .from('tasks')
+          .select(`
+            *,
+            projects:project_id (name),
+            goals:goal_id (title)
+          `)
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+          
+        if (error) throw error;
+        
+        setTasks(data || []);
+      } catch (error) {
+        console.error('Error fetching tasks:', error);
         toast({
-          title: "Erro ao atualizar tarefa",
-          description: error.message,
+          title: "Erro ao carregar tarefas",
+          description: "Não foi possível carregar suas tarefas",
           variant: "destructive",
         });
-      } else {
-        toast({
-          title: "Tarefa atualizada com sucesso!",
-        });
+      } finally {
+        setIsLoading(false);
       }
-    } catch (error) {
-      console.error('Error toggling task completion:', error);
-      toast({
-        title: "Erro inesperado",
-        description: "Ocorreu um erro ao atualizar a tarefa",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleEditTask = (taskId: string) => {
-    console.log("Edit task:", taskId);
-    // Will be implemented with task modal
-  };
-
-  const handleDeleteTask = async (taskId: string) => {
-    try {
-      const { error } = await deleteTask(taskId);
+    };
+    
+    fetchTasks();
+    
+    // Configurar subscription para atualizações em tempo real
+    const tasksSubscription = supabase
+      .channel('tasks-changes')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'tasks',
+        filter: `user_id=eq.${user.id}`
+      }, (payload) => {
+        if (payload.eventType === 'INSERT') {
+          setTasks(prev => [payload.new, ...prev]);
+        } else if (payload.eventType === 'UPDATE') {
+          setTasks(prev => prev.map(task => 
+            task.id === payload.new.id ? { ...task, ...payload.new } : task
+          ));
+        } else if (payload.eventType === 'DELETE') {
+          setTasks(prev => prev.filter(task => task.id !== payload.old.id));
+        }
+      })
+      .subscribe();
       
-      if (error) {
-        toast({
-          title: "Erro ao deletar tarefa",
-          description: error.message,
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Tarefa deletada com sucesso!",
-        });
+    return () => {
+      supabase.removeChannel(tasksSubscription);
+    };
+  }, [user]);
+  
+  // Filtrar tarefas com base na aba ativa
+  const filteredTasks = tasks.filter(task => {
+    if (activeTab === 'all') return true;
+    if (activeTab === 'today') {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const taskDate = task.due_date ? new Date(task.due_date) : null;
+      if (taskDate) {
+        taskDate.setHours(0, 0, 0, 0);
+        return taskDate.getTime() === today.getTime();
       }
-    } catch (error) {
-      console.error('Error deleting task:', error);
-      toast({
-        title: "Erro inesperado",
-        description: "Ocorreu um erro ao deletar a tarefa",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleCreateTask = async () => {
-    if (!newTaskData.title.trim()) {
-      toast({
-        title: "Título obrigatório",
-        description: "Por favor, digite um título para a tarefa",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      const { error } = await createTask({
-        title: newTaskData.title.trim(),
-        description: newTaskData.description.trim() || null,
-        priority: newTaskData.priority,
-        status: 'Novo',
-        project_id: null, // Personal task
-      });
-
-      if (error) {
-        toast({
-          title: "Erro ao criar tarefa",
-          description: error.message,
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Tarefa criada com sucesso!",
-        });
-        setIsNewTaskModalOpen(false);
-        setNewTaskData({ title: "", description: "", priority: "medium" });
-      }
-    } catch (error) {
-      console.error('Error creating task:', error);
-      toast({
-        title: "Erro inesperado",
-        description: "Ocorreu um erro ao criar a tarefa",
-        variant: "destructive",
-      });
-    }
-  };
-
-  // Transform Supabase tasks to component tasks with safe data handling
-  const transformedTasks: Task[] = tasks.map(task => {
-    try {
-      return {
-        id: task.id,
-        title: task.title || 'Tarefa sem título',
-        description: task.description || undefined,
-        completed: task.status === 'Concluído',
-        priority: (task.priority as "low" | "medium" | "high") || 'medium',
-        dueDate: task.due_date ? new Date(task.due_date) : undefined,
-        projectName: (task as any).project?.name || undefined,
-        tags: task.tags || [],
-      };
-    } catch (error) {
-      console.error('Error transforming task:', task, error);
-      // Return a safe fallback task
-      return {
-        id: task.id || 'unknown',
-        title: 'Erro ao carregar tarefa',
-        description: undefined,
-        completed: false,
-        priority: 'medium' as const,
-        dueDate: undefined,
-        projectName: undefined,
-        tags: [],
-      };
-    }
-  });
-
-  const filteredTasks = transformedTasks.filter(task => {
-    try {
-      switch (activeTab) {
-        case "personal":
-          return !task.projectName;
-        case "shared":
-          return !!task.projectName;
-        default:
-          return true;
-      }
-    } catch (error) {
-      console.error('Error filtering task:', task, error);
       return false;
     }
+    if (activeTab === 'upcoming') {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const taskDate = task.due_date ? new Date(task.due_date) : null;
+      if (taskDate) {
+        taskDate.setHours(0, 0, 0, 0);
+        return taskDate.getTime() > today.getTime();
+      }
+      return false;
+    }
+    if (activeTab === 'completed') {
+      return task.status === 'completed';
+    }
+    return true;
   });
-
-  if (loading) {
+  
+  // Manipular criação de tarefa
+  const handleTaskCreated = (newTask: any) => {
+    // A atualização é feita automaticamente pela subscription
+    toast({
+      title: "Tarefa criada",
+      description: "Sua tarefa foi criada com sucesso",
+    });
+  };
+  
+  // Manipular atualização de tarefa
+  const handleTaskUpdated = (updatedTask: any) => {
+    // A atualização é feita automaticamente pela subscription
+    toast({
+      title: "Tarefa atualizada",
+      description: "Sua tarefa foi atualizada com sucesso",
+    });
+  };
+  
+  // Manipular clique em tarefa para edição
+  const handleTaskClick = (task: any) => {
+    setSelectedTask(task);
+  };
+  
+  // Manipular fechamento do modal de edição
+  const handleEditModalClose = () => {
+    setSelectedTask(null);
+  };
+  
+  // Renderizar estatísticas
+  const renderStats = () => {
+    const totalTasks = tasks.length;
+    const completedTasks = tasks.filter(task => task.status === 'completed').length;
+    const pendingTasks = tasks.filter(task => task.status === 'pending').length;
+    const inProgressTasks = tasks.filter(task => task.status === 'in_progress').length;
+    
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total de Tarefas</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalTasks}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Concluídas</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">{completedTasks}</div>
+            <div className="text-xs text-muted-foreground">
+              {totalTasks > 0 ? `${Math.round((completedTasks / totalTasks) * 100)}%` : '0%'}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Pendentes</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-amber-600">{pendingTasks + inProgressTasks}</div>
+            <div className="text-xs text-muted-foreground">
+              {inProgressTasks} em progresso
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
-  }
-
+  };
+  
+  // Renderizar tarefas para hoje
+  const renderTodayTasks = () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const todayTasks = tasks.filter(task => {
+      const taskDate = task.due_date ? new Date(task.due_date) : null;
+      if (taskDate) {
+        taskDate.setHours(0, 0, 0, 0);
+        return taskDate.getTime() === today.getTime();
+      }
+      return false;
+    });
+    
+    if (todayTasks.length === 0) {
+      return (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Tarefas para Hoje</CardTitle>
+            <CardDescription>
+              {format(today, "EEEE, d 'de' MMMM", { locale: ptBR })}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-center py-6 text-muted-foreground">
+              Nenhuma tarefa para hoje
+            </div>
+          </CardContent>
+          <CardFooter>
+            <Button 
+              variant="outline" 
+              className="w-full"
+              onClick={() => setIsNewTaskModalOpen(true)}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Adicionar tarefa para hoje
+            </Button>
+          </CardFooter>
+        </Card>
+      );
+    }
+    
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Tarefas para Hoje</CardTitle>
+          <CardDescription>
+            {format(today, "EEEE, d 'de' MMMM", { locale: ptBR })}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            {todayTasks.map(task => (
+              <TaskItem 
+                key={task.id} 
+                task={task} 
+                onClick={() => handleTaskClick(task)}
+              />
+            ))}
+          </div>
+        </CardContent>
+        <CardFooter>
+          <Button 
+            variant="outline" 
+            className="w-full"
+            onClick={() => setIsNewTaskModalOpen(true)}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Adicionar tarefa para hoje
+          </Button>
+        </CardFooter>
+      </Card>
+    );
+  };
+  
   return (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <div>
+    <AppLayout>
+      <div className="container py-6">
+        <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Dashboard</h1>
-          <p className="text-muted-foreground">
-            Gerencie suas tarefas e acompanhe seu progresso
-          </p>
+          <Button onClick={() => setIsNewTaskModalOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Nova Tarefa
+          </Button>
         </div>
         
-        <Button className="btn-gradient" onClick={() => setIsNewTaskModalOpen(true)}>
-          <Plus className="w-4 h-4 mr-2" />
-          Nova Tarefa
-        </Button>
-      </div>
-
-      <TaskFilters
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-        timeFilter={timeFilter}
-        onTimeFilterChange={setTimeFilter}
-        dateRange={dateRange}
-        onDateRangeChange={setDateRange}
-      />
-
-      <div className="space-y-4">
-        {filteredTasks.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground mb-4">
-              Nenhuma tarefa encontrada
-            </p>
-            <Button className="btn-gradient" onClick={() => setIsNewTaskModalOpen(true)}>
-              <Plus className="w-4 h-4 mr-2" />
-              Criar primeira tarefa
-            </Button>
+        {renderStats()}
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="md:col-span-2">
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="mb-4">
+                <TabsTrigger value="all">Todas</TabsTrigger>
+                <TabsTrigger value="today">Hoje</TabsTrigger>
+                <TabsTrigger value="upcoming">Próximas</TabsTrigger>
+                <TabsTrigger value="completed">Concluídas</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value={activeTab} className="space-y-4">
+                {isLoading ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                    <p className="mt-2 text-muted-foreground">Carregando tarefas...</p>
+                  </div>
+                ) : filteredTasks.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">Nenhuma tarefa encontrada</p>
+                    <Button 
+                      variant="outline" 
+                      className="mt-4"
+                      onClick={() => setIsNewTaskModalOpen(true)}
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      Criar nova tarefa
+                    </Button>
+                  </div>
+                ) : (
+                  filteredTasks.map(task => (
+                    <TaskItem 
+                      key={task.id} 
+                      task={task} 
+                      onClick={() => handleTaskClick(task)}
+                    />
+                  ))
+                )}
+              </TabsContent>
+            </Tabs>
           </div>
-        ) : (
-          filteredTasks.map((task) => (
-            <TaskItem
-              key={task.id}
-              task={task}
-              onToggleComplete={handleToggleComplete}
-              onEdit={handleEditTask}
-              onDelete={handleDeleteTask}
-            />
-          ))
-        )}
-      </div>
-
-      {/* New Task Modal */}
-      <Dialog open={isNewTaskModalOpen} onOpenChange={setIsNewTaskModalOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Nova Tarefa</DialogTitle>
-          </DialogHeader>
           
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="task-title">Título</Label>
-              <Input
-                id="task-title"
-                value={newTaskData.title}
-                onChange={(e) => setNewTaskData({ ...newTaskData, title: e.target.value })}
-                placeholder="Digite o título da tarefa"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="task-description">Descrição</Label>
-              <Textarea
-                id="task-description"
-                value={newTaskData.description}
-                onChange={(e) => setNewTaskData({ ...newTaskData, description: e.target.value })}
-                placeholder="Descreva a tarefa (opcional)"
-                rows={3}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Prioridade</Label>
-              <Select 
-                value={newTaskData.priority} 
-                onValueChange={(value: any) => setNewTaskData({ ...newTaskData, priority: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="low">Baixa</SelectItem>
-                  <SelectItem value="medium">Média</SelectItem>
-                  <SelectItem value="high">Alta</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex justify-end space-x-2">
-              <Button 
-                variant="outline" 
-                onClick={() => setIsNewTaskModalOpen(false)}
-              >
-                Cancelar
-              </Button>
-              <Button onClick={handleCreateTask} className="btn-gradient">
-                Criar Tarefa
-              </Button>
-            </div>
+          <div>
+            {renderTodayTasks()}
           </div>
-        </DialogContent>
-      </Dialog>
-    </div>
+        </div>
+      </div>
+      
+      {/* Modal de nova tarefa */}
+      <TaskFormModal
+        isOpen={isNewTaskModalOpen}
+        onClose={() => setIsNewTaskModalOpen(false)}
+        onTaskCreated={handleTaskCreated}
+      />
+      
+      {/* Modal de edição de tarefa */}
+      <TaskFormModal
+        isOpen={!!selectedTask}
+        onClose={handleEditModalClose}
+        onTaskUpdated={handleTaskUpdated}
+        existingTask={selectedTask}
+      />
+    </AppLayout>
   );
 }
