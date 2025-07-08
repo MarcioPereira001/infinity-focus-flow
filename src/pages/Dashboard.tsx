@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { TaskItem, Task } from "@/components/dashboard/task-item";
 import { TaskFilters, TimeFilter, TaskTab } from "@/components/dashboard/task-filters";
 import { Button } from "@/components/ui/button";
@@ -8,14 +8,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTasks } from "@/hooks/useTasks";
 import { toast } from "@/hooks/use-toast";
 
 export default function Dashboard() {
-  const navigate = useNavigate();
-  const { signOut, profile } = useAuth();
+  const { profile } = useAuth();
   const { tasks, loading, createTask, updateTask, deleteTask } = useTasks();
   
   const [activeTab, setActiveTab] = useState<TaskTab>("all");
@@ -29,17 +27,30 @@ export default function Dashboard() {
   });
 
   const handleToggleComplete = async (taskId: string) => {
-    const task = tasks.find(t => t.id === taskId);
-    if (!task) return;
+    try {
+      const task = tasks.find(t => t.id === taskId);
+      if (!task) return;
 
-    const newStatus = task.status === 'Concluído' ? 'Novo' : 'Concluído';
-    
-    const { error } = await updateTask(taskId, { status: newStatus });
-    
-    if (error) {
+      const newStatus = task.status === 'Concluído' ? 'Novo' : 'Concluído';
+      
+      const { error } = await updateTask(taskId, { status: newStatus });
+      
+      if (error) {
+        toast({
+          title: "Erro ao atualizar tarefa",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Tarefa atualizada com sucesso!",
+        });
+      }
+    } catch (error) {
+      console.error('Error toggling task completion:', error);
       toast({
-        title: "Erro ao atualizar tarefa",
-        description: error.message,
+        title: "Erro inesperado",
+        description: "Ocorreu um erro ao atualizar a tarefa",
         variant: "destructive",
       });
     }
@@ -51,63 +62,114 @@ export default function Dashboard() {
   };
 
   const handleDeleteTask = async (taskId: string) => {
-    const { error } = await deleteTask(taskId);
-    
-    if (error) {
+    try {
+      const { error } = await deleteTask(taskId);
+      
+      if (error) {
+        toast({
+          title: "Erro ao deletar tarefa",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Tarefa deletada com sucesso!",
+        });
+      }
+    } catch (error) {
+      console.error('Error deleting task:', error);
       toast({
-        title: "Erro ao deletar tarefa",
-        description: error.message,
+        title: "Erro inesperado",
+        description: "Ocorreu um erro ao deletar a tarefa",
         variant: "destructive",
       });
     }
   };
 
   const handleCreateTask = async () => {
-    if (!newTaskData.title.trim()) return;
-
-    const { error } = await createTask({
-      title: newTaskData.title,
-      description: newTaskData.description || null,
-      priority: newTaskData.priority,
-      status: 'Novo',
-      project_id: null, // Personal task
-    });
-
-    if (error) {
+    if (!newTaskData.title.trim()) {
       toast({
-        title: "Erro ao criar tarefa",
-        description: error.message,
+        title: "Título obrigatório",
+        description: "Por favor, digite um título para a tarefa",
         variant: "destructive",
       });
-    } else {
-      toast({
-        title: "Tarefa criada com sucesso!",
+      return;
+    }
+
+    try {
+      const { error } = await createTask({
+        title: newTaskData.title.trim(),
+        description: newTaskData.description.trim() || null,
+        priority: newTaskData.priority,
+        status: 'Novo',
+        project_id: null, // Personal task
       });
-      setIsNewTaskModalOpen(false);
-      setNewTaskData({ title: "", description: "", priority: "medium" });
+
+      if (error) {
+        toast({
+          title: "Erro ao criar tarefa",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Tarefa criada com sucesso!",
+        });
+        setIsNewTaskModalOpen(false);
+        setNewTaskData({ title: "", description: "", priority: "medium" });
+      }
+    } catch (error) {
+      console.error('Error creating task:', error);
+      toast({
+        title: "Erro inesperado",
+        description: "Ocorreu um erro ao criar a tarefa",
+        variant: "destructive",
+      });
     }
   };
 
-  // Transform Supabase tasks to component tasks
-  const transformedTasks: Task[] = tasks.map(task => ({
-    id: task.id,
-    title: task.title,
-    description: task.description || undefined,
-    completed: task.status === 'Concluído',
-    priority: task.priority as "low" | "medium" | "high",
-    dueDate: task.due_date ? new Date(task.due_date) : undefined,
-    projectName: (task as any).project?.name || undefined,
-    tags: task.tags || [],
-  }));
+  // Transform Supabase tasks to component tasks with safe data handling
+  const transformedTasks: Task[] = tasks.map(task => {
+    try {
+      return {
+        id: task.id,
+        title: task.title || 'Tarefa sem título',
+        description: task.description || undefined,
+        completed: task.status === 'Concluído',
+        priority: (task.priority as "low" | "medium" | "high") || 'medium',
+        dueDate: task.due_date ? new Date(task.due_date) : undefined,
+        projectName: (task as any).project?.name || undefined,
+        tags: task.tags || [],
+      };
+    } catch (error) {
+      console.error('Error transforming task:', task, error);
+      // Return a safe fallback task
+      return {
+        id: task.id || 'unknown',
+        title: 'Erro ao carregar tarefa',
+        description: undefined,
+        completed: false,
+        priority: 'medium' as const,
+        dueDate: undefined,
+        projectName: undefined,
+        tags: [],
+      };
+    }
+  });
 
   const filteredTasks = transformedTasks.filter(task => {
-    switch (activeTab) {
-      case "personal":
-        return !task.projectName;
-      case "shared":
-        return !!task.projectName;
-      default:
-        return true;
+    try {
+      switch (activeTab) {
+        case "personal":
+          return !task.projectName;
+        case "shared":
+          return !!task.projectName;
+        default:
+          return true;
+      }
+    } catch (error) {
+      console.error('Error filtering task:', task, error);
+      return false;
     }
   });
 
