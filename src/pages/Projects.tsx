@@ -37,8 +37,11 @@ export default function Projects() {
         // Buscar projetos que o usuário é proprietário ou membro
         const { data, error } = await supabase
           .from('projects')
-          .select('*')
-          .or(`owner_id.eq.${user.id},project_members(user_id).eq.${user.id}`)
+          .select(`
+            *,
+            project_members!inner(user_id)
+          `)
+          .or(`owner_id.eq.${user.id},project_members.user_id.eq.${user.id}`)
           .order('created_at', { ascending: false });
           
         if (error) throw error;

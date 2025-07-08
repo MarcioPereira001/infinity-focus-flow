@@ -1,116 +1,24 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TaskItem } from "@/components/dashboard/task-item";
 import { TaskFormModal } from "@/components/modal/task-form-modal";
-import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { useTasks } from "@/hooks/useTasks";
 import { Plus, Calendar, CheckCircle2, Clock } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 export default function Dashboard() {
-  const { user } = useAuth();
-  const [tasks, setTasks] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { tasks, loading, getFilteredTasks, updateTask } = useTasks(); // Para dashboard, sem projectId filtra tarefas pessoais
   const [activeTab, setActiveTab] = useState("all");
   const [isNewTaskModalOpen, setIsNewTaskModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<any>(null);
   
-  // Buscar tarefas
-  useEffect(() => {
-    if (!user) return;
-    
-    const fetchTasks = async () => {
-      setIsLoading(true);
-      
-      try {
-        const { data, error } = await supabase
-          .from('tasks')
-          .select(`
-            *,
-            projects:project_id (name),
-            goals:goal_id (title)
-          `)
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false });
-          
-        if (error) throw error;
-        
-        setTasks(data || []);
-      } catch (error) {
-        console.error('Error fetching tasks:', error);
-        toast({
-          title: "Erro ao carregar tarefas",
-          description: "Não foi possível carregar suas tarefas",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    fetchTasks();
-    
-    // Configurar subscription para atualizações em tempo real
-    const tasksSubscription = supabase
-      .channel('tasks-changes')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'tasks',
-        filter: `user_id=eq.${user.id}`
-      }, (payload) => {
-        if (payload.eventType === 'INSERT') {
-          setTasks(prev => [payload.new, ...prev]);
-        } else if (payload.eventType === 'UPDATE') {
-          setTasks(prev => prev.map(task => 
-            task.id === payload.new.id ? { ...task, ...payload.new } : task
-          ));
-        } else if (payload.eventType === 'DELETE') {
-          setTasks(prev => prev.filter(task => task.id !== payload.old.id));
-        }
-      })
-      .subscribe();
-      
-    return () => {
-      supabase.removeChannel(tasksSubscription);
-    };
-  }, [user]);
-  
-  // Filtrar tarefas com base na aba ativa
-  const filteredTasks = tasks.filter(task => {
-    if (activeTab === 'all') return true;
-    if (activeTab === 'today') {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      
-      const taskDate = task.due_date ? new Date(task.due_date) : null;
-      if (taskDate) {
-        taskDate.setHours(0, 0, 0, 0);
-        return taskDate.getTime() === today.getTime();
-      }
-      return false;
-    }
-    if (activeTab === 'upcoming') {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      
-      const taskDate = task.due_date ? new Date(task.due_date) : null;
-      if (taskDate) {
-        taskDate.setHours(0, 0, 0, 0);
-        return taskDate.getTime() > today.getTime();
-      }
-      return false;
-    }
-    if (activeTab === 'completed') {
-      return task.status === 'completed';
-    }
-    return true;
-  });
+  // Filtrar tarefas usando o hook
+  const filteredTasks = getFilteredTasks(activeTab as any);
   
   // Manipular criação de tarefa
   const handleTaskCreated = (newTask: any) => {
@@ -144,8 +52,8 @@ export default function Dashboard() {
   const renderStats = () => {
     const totalTasks = tasks.length;
     const completedTasks = tasks.filter(task => task.status === 'completed').length;
-    const pendingTasks = tasks.filter(task => task.status === 'pending').length;
-    const inProgressTasks = tasks.filter(task => task.status === 'in_progress').length;
+    const pendingTasks = tasks.filter(task => task.status === 'pending' || task.status === 'Novo').length;
+    const inProgressTasks = tasks.filter(task => task.status === 'in_progress' || task.status === 'Em Andamento').length;
     
     return (
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -282,7 +190,7 @@ export default function Dashboard() {
               </TabsList>
               
               <TabsContent value={activeTab} className="space-y-4">
-                {isLoading ? (
+                {loading ? (
                   <div className="text-center py-8">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
                     <p className="mt-2 text-muted-foreground">Carregando tarefas...</p>

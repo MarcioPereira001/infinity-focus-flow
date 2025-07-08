@@ -15,12 +15,12 @@ export interface Task {
   id: string;
   title: string;
   description?: string;
-  completed: boolean;
-  priority: 'low' | 'medium' | 'high';
-  dueDate?: Date;
-  projectId?: string;
-  projectName?: string;
-  assignedTo?: string;
+  status: string;
+  priority: string;
+  due_date?: string;
+  project_id?: string;
+  project?: { name: string };
+  responsible?: { full_name: string };
   tags?: string[];
 }
 
@@ -33,7 +33,7 @@ interface TaskItemProps {
 }
 
 export function TaskItem({ task, onToggleComplete, onEdit, onDelete, onClick }: TaskItemProps) {
-  const [isCompleted, setIsCompleted] = useState(task.completed);
+  const [isCompleted, setIsCompleted] = useState(task.status === 'Concluído');
 
   const handleToggleComplete = () => {
     setIsCompleted(!isCompleted);
@@ -125,16 +125,16 @@ export function TaskItem({ task, onToggleComplete, onEdit, onDelete, onClick }: 
                task.priority === 'medium' ? 'Média' : 'Baixa'}
             </Badge>
 
-            {task.projectName && (
+            {task.project?.name && (
               <Badge variant="outline" className="text-xs">
-                {task.projectName}
+                {task.project.name}
               </Badge>
             )}
 
-            {task.dueDate && (
+            {task.due_date && (
               <div className="flex items-center text-xs text-muted-foreground">
                 <Calendar className="h-3 w-3 mr-1" />
-                {task.dueDate.toLocaleDateString('pt-BR')}
+                {new Date(task.due_date).toLocaleDateString('pt-BR')}
               </div>
             )}
 
