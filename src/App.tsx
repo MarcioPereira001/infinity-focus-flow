@@ -1,32 +1,31 @@
 import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { CheckoutModal } from "@/components/modal/checkout-modal";
-import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider } from "@/contexts/AuthContext";
 import { AppLayout } from "@/components/layout/app-layout";
-import Landing from "./pages/Landing";
-import Dashboard from "./pages/Dashboard";
-import Projects from "./pages/Projects";
-import ProjectKanban from "./pages/ProjectKanban";
-import Analytics from "./pages/Analytics";
-import Settings from "./pages/Settings";
-import Checkout from "./pages/Checkout";
-import NotFound from "./pages/NotFound";
+import { useAuth } from "@/contexts/AuthContext";
 
-const queryClient = new QueryClient();
+// Páginas
+import Landing from "@/pages/Landing";
+import Dashboard from "@/pages/Dashboard";
+import Projects from "@/pages/Projects";
+import ProjectKanban from "@/pages/ProjectKanban";
+import Analytics from "@/pages/Analytics";
+import Settings from "@/pages/Settings";
+import Checkout from "@/pages/Checkout";
 
-// Protected Route Component
+// Componente de carregamento
+const LoadingFallback = () => (
+  <div className="min-h-screen flex items-center justify-center">
+    <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+  </div>
+);
+
+// Componente de rota protegida
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
-      </div>
-    );
+    return <LoadingFallback />;
   }
 
   if (!user) {
@@ -40,74 +39,48 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   );
 }
 
-// App Content Component
-function AppContent() {
-  const { isTrialExpired, profile } = useAuth();
-  
-  const daysRemaining = profile?.trial_ends_at 
-    ? Math.max(0, Math.ceil((new Date(profile.trial_ends_at).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))
-    : 0;
-
+function App() {
   return (
-    <>
-      <Routes>
-        <Route path="/" element={<Landing />} />
-        <Route path="/dashboard" element={
-          <ProtectedRoute>
-            <Dashboard />
-          </ProtectedRoute>
-        } />
-        <Route path="/projects" element={
-          <ProtectedRoute>
-            <Projects />
-          </ProtectedRoute>
-        } />
-        <Route path="/projects/:id" element={
-          <ProtectedRoute>
-            <ProjectKanban />
-          </ProtectedRoute>
-        } />
-        <Route path="/analytics" element={
-          <ProtectedRoute>
-            <Analytics />
-          </ProtectedRoute>
-        } />
-        <Route path="/settings" element={
-          <ProtectedRoute>
-            <Settings />
-          </ProtectedRoute>
-        } />
-        <Route path="/checkout" element={
-          <ProtectedRoute>
-            <Checkout />
-          </ProtectedRoute>
-        } />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-      
-      {/* Checkout Modal - Cannot be closed */}
-      <CheckoutModal 
-        isOpen={isTrialExpired} 
-        daysRemaining={daysRemaining}
-      />
-    </>
+    <Router>
+      <AuthProvider>
+        <Routes>
+          <Route path="/" element={<Landing />} />
+          <Route path="/dashboard" element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          } />
+          <Route path="/projects" element={
+            <ProtectedRoute>
+              <Projects />
+            </ProtectedRoute>
+          } />
+          <Route path="/projects/:id" element={
+            <ProtectedRoute>
+              <ProjectKanban />
+            </ProtectedRoute>
+          } />
+          <Route path="/analytics" element={
+            <ProtectedRoute>
+              <Analytics />
+            </ProtectedRoute>
+          } />
+          <Route path="/settings" element={
+            <ProtectedRoute>
+              <Settings />
+            </ProtectedRoute>
+          } />
+          <Route path="/checkout" element={
+            <ProtectedRoute>
+              <Checkout />
+            </ProtectedRoute>
+          } />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+        <Toaster />
+      </AuthProvider>
+    </Router>
   );
 }
-
-const App = () => {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <AuthProvider>
-          <BrowserRouter>
-            <AppContent />
-          </BrowserRouter>
-        </AuthProvider>
-      </TooltipProvider>
-    </QueryClientProvider>
-  );
-};
 
 export default App;
