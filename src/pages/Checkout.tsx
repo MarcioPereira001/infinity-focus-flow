@@ -9,11 +9,11 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, CreditCard, CheckCircle, AlertCircle } from "lucide-react";
+import { ArrowLeft, CreditCard, CheckCircle } from "lucide-react";
 
 export default function Checkout() {
   const navigate = useNavigate();
-  const { user, profile, updateProfile } = useAuth();
+  const { user } = useAuth();
   
   const [paymentMethod, setPaymentMethod] = useState("credit-card");
   const [couponCode, setCouponCode] = useState("");
@@ -33,7 +33,7 @@ export default function Checkout() {
   const discountAmount = appliedCoupon ? 
     (appliedCoupon.is_free_month || appliedCoupon.is_permanent) ? 
       basePrice : 
-      (basePrice * appliedCoupon.discount_percent / 100) : 
+      (basePrice * (appliedCoupon.discount_percent || 0) / 100) : 
     0;
   const totalPrice = basePrice - discountAmount;
   
@@ -51,16 +51,19 @@ export default function Checkout() {
     setIsValidatingCoupon(true);
     
     try {
-      // Verificar se o cupom existe
-      const { data, error } = await supabase
-        .from('coupons')
-        .select('*')
-        .eq('code', couponCode.trim())
-        .single();
-        
-      if (error) throw error;
+      // Simular validação de cupom
+      await new Promise(resolve => setTimeout(resolve, 500));
       
-      if (!data) {
+      // Cupons de exemplo
+      const coupons = [
+        { code: "FIRSTMONTHFREE", is_free_month: true, discount_percent: 100 },
+        { code: "INFINITY2025", is_permanent: true, discount_percent: 100 },
+        { code: "WELCOME20", discount_percent: 20 },
+      ];
+      
+      const coupon = coupons.find(c => c.code === couponCode.trim());
+      
+      if (!coupon) {
         toast({
           title: "Cupom inválido",
           description: "O código de cupom informado não existe",
@@ -69,57 +72,16 @@ export default function Checkout() {
         return;
       }
       
-      // Verificar se o cupom expirou
-      if (data.expires_at && new Date(data.expires_at) < new Date()) {
-        toast({
-          title: "Cupom expirado",
-          description: "Este cupom já expirou",
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      // Verificar se o cupom atingiu o limite de usos
-      if (data.max_uses && data.current_uses >= data.max_uses) {
-        toast({
-          title: "Cupom esgotado",
-          description: "Este cupom atingiu o limite máximo de usos",
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      // Verificar se o usuário já usou este cupom
-      const { data: userCoupon, error: userCouponError } = await supabase
-        .from('user_coupons')
-        .select('*')
-        .eq('user_id', user?.id)
-        .eq('coupon_code', couponCode.trim())
-        .single();
-        
-      if (userCouponError && userCouponError.code !== 'PGRST116') { // PGRST116 = not found
-        throw userCouponError;
-      }
-      
-      if (userCoupon) {
-        toast({
-          title: "Cupom já utilizado",
-          description: "Você já utilizou este cupom anteriormente",
-          variant: "destructive",
-        });
-        return;
-      }
-      
       // Aplicar o cupom
-      setAppliedCoupon(data);
+      setAppliedCoupon(coupon);
       
       toast({
         title: "Cupom aplicado com sucesso!",
-        description: data.is_free_month ? 
+        description: coupon.is_free_month ? 
           "Você ganhou 1 mês grátis!" : 
-          data.is_permanent ? 
+          coupon.is_permanent ? 
             "Você ganhou acesso permanente ao plano Pro!" : 
-            `Desconto de ${data.discount_percent}% aplicado!`,
+            `Desconto de ${coupon.discount_percent}% aplicado!`,
       });
       
     } catch (error: any) {
@@ -136,68 +98,18 @@ export default function Checkout() {
   
   // Processar pagamento
   const processPayment = async () => {
-    if (!user) return;
+    if (!user) {
+      toast({
+        title: "Usuário não autenticado",
+        description: "Você precisa estar logado para fazer o upgrade",
+        variant: "destructive",
+      });
+      return;
+    }
     
     setIsProcessing(true);
     
     try {
-      // Validar dados do cartão (simulação)
-      if (paymentMethod === 'credit-card' && !appliedCoupon?.is_free_month && !appliedCoupon?.is_permanent) {
-        if (!cardDetails.cardNumber || !cardDetails.cardName || !cardDetails.expiryDate || !cardDetails.cvv) {
-          throw new Error("Por favor, preencha todos os dados do cartão");
-        }
-        
-        if (cardDetails.cardNumber.replace(/\s/g, '').length !== 16) {
-          throw new Error("Número do cartão inválido");
-        }
-        
-        if (cardDetails.cvv.length < 3) {
-          throw new Error("CVV inválido");
-        }
-      }
-      
-      // Se tiver cupom aplicado, registrar o uso
-      if (appliedCoupon) {
-        // 1. Registrar o uso do cupom para o usuário
-        const { error: userCouponError } = await supabase
-          .from('user_coupons')
-          .insert({
-            user_id: user.id,
-            coupon_code: appliedCoupon.code,
-            applied_at: new Date().toISOString(),
-            expires_at: appliedCoupon.is_free_month ? 
-              new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() : // 30 dias
-              null,
-            is_active: true
-          });
-          
-        if (userCouponError) throw userCouponError;
-        
-        // 2. Incrementar o contador de usos do cupom
-        const { error: couponUpdateError } = await supabase
-          .from('coupons')
-          .update({ 
-            current_uses: appliedCoupon.current_uses + 1,
-            updated_at: new Date().toISOString()
-          })
-          .eq('code', appliedCoupon.code);
-          
-        if (couponUpdateError) throw couponUpdateError;
-        
-        // 3. Atualizar o status do plano do usuário
-        const planStatus = appliedCoupon.is_permanent ? 'pro_permanent' : 'pro';
-        
-        const { error: profileUpdateError } = await supabase
-          .from('profiles')
-          .update({ 
-            plan_status: planStatus,
-            updated_at: new Date().toISOString()
-          })
-          .eq('user_id', user.id);
-          
-        if (profileUpdateError) throw profileUpdateError;
-      }
-      
       // Simular processamento de pagamento
       await new Promise(resolve => setTimeout(resolve, 1500));
       
@@ -209,8 +121,6 @@ export default function Checkout() {
       // Redirecionar para o dashboard após o pagamento
       setTimeout(() => {
         navigate('/dashboard');
-        // Recarregar a página para atualizar o contexto de autenticação
-        window.location.reload();
       }, 1500);
       
     } catch (error: any) {
