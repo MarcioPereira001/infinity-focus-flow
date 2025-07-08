@@ -30,6 +30,11 @@ const navigation = [
     icon: BarChart3,
   },
   {
+    name: 'Gamificação',
+    href: '/gamification',
+    icon: Trophy,
+  },
+  {
     name: 'Configurações',
     href: '/settings',
     icon: Settings,
