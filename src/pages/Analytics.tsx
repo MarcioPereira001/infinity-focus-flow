@@ -9,90 +9,22 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { useAnalytics } from "@/hooks/useAnalytics";
 import { Calendar, Clock, CheckCircle, XCircle, BarChart2, PieChart as PieChartIcon, TrendingUp, Target } from "lucide-react";
-
-// Dados simulados para demonstração
-const DUMMY_DATA = {
-  weeklyTasks: [
-    { name: 'Seg', completed: 4, pending: 2 },
-    { name: 'Ter', completed: 3, pending: 1 },
-    { name: 'Qua', completed: 5, pending: 3 },
-    { name: 'Qui', completed: 2, pending: 4 },
-    { name: 'Sex', completed: 6, pending: 1 },
-    { name: 'Sáb', completed: 3, pending: 0 },
-    { name: 'Dom', completed: 1, pending: 1 },
-  ],
-  monthlyTasks: [
-    { name: 'Semana 1', completed: 15, pending: 5 },
-    { name: 'Semana 2', completed: 12, pending: 8 },
-    { name: 'Semana 3', completed: 18, pending: 3 },
-    { name: 'Semana 4', completed: 10, pending: 7 },
-  ],
-  yearlyTasks: [
-    { name: 'Jan', completed: 45, pending: 15 },
-    { name: 'Fev', completed: 38, pending: 12 },
-    { name: 'Mar', completed: 52, pending: 18 },
-    { name: 'Abr', completed: 40, pending: 10 },
-    { name: 'Mai', completed: 55, pending: 20 },
-    { name: 'Jun', completed: 48, pending: 15 },
-    { name: 'Jul', completed: 60, pending: 12 },
-    { name: 'Ago', completed: 45, pending: 18 },
-    { name: 'Set', completed: 50, pending: 15 },
-    { name: 'Out', completed: 55, pending: 10 },
-    { name: 'Nov', completed: 48, pending: 12 },
-    { name: 'Dez', completed: 52, pending: 15 },
-  ],
-  tasksByPriority: [
-    { name: 'Alta', value: 12, color: '#ef4444' },
-    { name: 'Média', value: 25, color: '#f59e0b' },
-    { name: 'Baixa', value: 18, color: '#3b82f6' },
-  ],
-  tasksByStatus: [
-    { name: 'Concluídas', value: 45, color: '#22c55e' },
-    { name: 'Pendentes', value: 30, color: '#f59e0b' },
-    { name: 'Atrasadas', value: 10, color: '#ef4444' },
-  ],
-  productivityByHour: [
-    { hour: '08:00', tasks: 2 },
-    { hour: '09:00', tasks: 3 },
-    { hour: '10:00', tasks: 5 },
-    { hour: '11:00', tasks: 4 },
-    { hour: '12:00', tasks: 1 },
-    { hour: '13:00', tasks: 2 },
-    { hour: '14:00', tasks: 6 },
-    { hour: '15:00', tasks: 4 },
-    { hour: '16:00', tasks: 3 },
-    { hour: '17:00', tasks: 2 },
-    { hour: '18:00', tasks: 1 },
-    { hour: '19:00', tasks: 0 },
-  ],
-};
 
 export default function Analytics() {
   const { user } = useAuth();
   const [selectedProject, setSelectedProject] = useState("all");
-  const [selectedPeriod, setSelectedPeriod] = useState("month");
+  const [selectedPeriod, setSelectedPeriod] = useState<'week' | 'month' | 'year'>("month");
   const [projects, setProjects] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
   
-  // Dados para os gráficos
-  const [chartData, setChartData] = useState({
-    tasksOverTime: [] as any[],
-    tasksByPriority: [] as any[],
-    tasksByStatus: [] as any[],
-    productivityByHour: [] as any[],
-  });
-  
-  // Estatísticas gerais
-  const [stats, setStats] = useState({
-    totalTasks: 0,
-    completedTasks: 0,
-    pendingTasks: 0,
-    completionRate: 0,
-    averageTasksPerDay: 0,
-    streak: 0,
-  });
+  // Use the analytics hook with real data
+  const { data: chartData, stats, loading: analyticsLoading } = useAnalytics(
+    selectedProject === 'all' ? undefined : selectedProject, 
+    selectedPeriod
+  );
+  const [loading, setLoading] = useState(true);
   
   // Fetch user's projects
   useEffect(() => {
@@ -103,6 +35,7 @@ export default function Analytics() {
         const { data, error } = await supabase
           .from('projects')
           .select('*')
+          .or(`owner_id.eq.${user.id},project_members.user_id.eq.${user.id}`)
           .order('created_at', { ascending: false });
           
         if (error) throw error;
@@ -121,75 +54,11 @@ export default function Analytics() {
     
     fetchProjects();
   }, [user]);
-  
-  // Fetch analytics data
+
+  // Update loading state based on analytics loading
   useEffect(() => {
-    const fetchAnalyticsData = async () => {
-      if (!user) return;
-      
-      setLoading(true);
-      
-      try {
-        // Aqui seria uma chamada ao Supabase para buscar os dados reais
-        // Por enquanto, vamos usar dados simulados
-        
-        // Simular carregamento
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // Determinar quais dados usar com base no período selecionado
-        let tasksOverTime;
-        switch (selectedPeriod) {
-          case 'week':
-            tasksOverTime = DUMMY_DATA.weeklyTasks;
-            break;
-          case 'month':
-            tasksOverTime = DUMMY_DATA.monthlyTasks;
-            break;
-          case 'year':
-            tasksOverTime = DUMMY_DATA.yearlyTasks;
-            break;
-          default:
-            tasksOverTime = DUMMY_DATA.monthlyTasks;
-        }
-        
-        // Atualizar os dados dos gráficos
-        setChartData({
-          tasksOverTime,
-          tasksByPriority: DUMMY_DATA.tasksByPriority,
-          tasksByStatus: DUMMY_DATA.tasksByStatus,
-          productivityByHour: DUMMY_DATA.productivityByHour,
-        });
-        
-        // Calcular estatísticas
-        const totalTasks = tasksOverTime.reduce((sum, day) => sum + day.completed + day.pending, 0);
-        const completedTasks = tasksOverTime.reduce((sum, day) => sum + day.completed, 0);
-        const pendingTasks = tasksOverTime.reduce((sum, day) => sum + day.pending, 0);
-        const completionRate = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
-        const averageTasksPerDay = totalTasks / tasksOverTime.length;
-        
-        setStats({
-          totalTasks,
-          completedTasks,
-          pendingTasks,
-          completionRate,
-          averageTasksPerDay,
-          streak: 7, // Valor simulado
-        });
-        
-      } catch (error) {
-        console.error('Error fetching analytics data:', error);
-        toast({
-          title: "Erro ao carregar dados",
-          description: "Não foi possível carregar os dados de análise",
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchAnalyticsData();
-  }, [user, selectedProject, selectedPeriod]);
+    setLoading(analyticsLoading);
+  }, [analyticsLoading]);
   
   // Renderizar gráfico de tarefas ao longo do tempo
   const renderTasksOverTimeChart = () => {
@@ -343,7 +212,7 @@ export default function Analytics() {
             </Select>
           </div>
           <div>
-            <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
+            <Select value={selectedPeriod} onValueChange={(value) => setSelectedPeriod(value as 'week' | 'month' | 'year')}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Selecione um período" />
               </SelectTrigger>
