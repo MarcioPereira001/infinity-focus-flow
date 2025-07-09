@@ -16,22 +16,20 @@ import { ptBR } from "date-fns/locale";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-
-interface Project {
-  id: string;
-  name: string;
-  owner_id: string;
-}
+import { useProject } from "@/hooks/useProjects";
+import { useTasks } from "@/hooks/useTasks";
 
 export default function ProjectKanban() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [project, setProject] = useState<Project | null>(null);
-  const [columns, setColumns] = useState<KanbanColumnData[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { project, columns, loading } = useProject(id);
+  const { tasks, updateTask, createTask } = useTasks(id);
+  const [kanbanColumns, setKanbanColumns] = useState<KanbanColumnData[]>([]);
   const [selectedTask, setSelectedTask] = useState<KanbanTask | null>(null);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+  const [isNewTask, setIsNewTask] = useState(false);
+  const [newTaskColumnId, setNewTaskColumnId] = useState<string>("");
   const [taskFormData, setTaskFormData] = useState({
     title: "",
     description: "",
@@ -41,46 +39,14 @@ export default function ProjectKanban() {
     dueDate: undefined as Date | undefined
   });
 
-  const fetchProjectData = async () => {
-    if (!id || !user) return;
-
-    try {
-      // Fetch project details
-      const { data: projectData, error: projectError } = await supabase
-        .from('projects')
-        .select('*')
-        .eq('id', id)
-        .single();
-
-      if (projectError) throw projectError;
-      setProject(projectData);
-
-      // Fetch kanban columns
-      const { data: columnsData, error: columnsError } = await supabase
-        .from('kanban_columns')
-        .select('*')
-        .eq('project_id', id)
-        .order('position');
-
-      if (columnsError) throw columnsError;
-
-      // Fetch tasks for this project
-      const { data: tasksData, error: tasksError } = await supabase
-        .from('tasks')
-        .select(`
-          *,
-          responsible:profiles!tasks_responsible_id_fkey(full_name)
-        `)
-        .eq('project_id', id);
-
-      if (tasksError) throw tasksError;
-
-      // Transform data to match KanbanBoard component
-      const transformedColumns: KanbanColumnData[] = columnsData.map(column => ({
+  // Transform columns and tasks data
+  useEffect(() => {
+    if (columns && tasks) {
+      const transformedColumns: KanbanColumnData[] = columns.map(column => ({
         id: column.id,
         title: column.title,
-        color: column.color,
-        tasks: tasksData
+        color: column.color || '#64748b',
+        tasks: tasks
           .filter(task => task.status === column.title)
           .map(task => ({
             id: task.id,
@@ -90,23 +56,13 @@ export default function ProjectKanban() {
             assignedTo: (task as any).responsible?.full_name || "",
             tags: task.tags || [],
             dueDate: task.due_date ? new Date(task.due_date) : undefined,
-            comments: 0, // Will be implemented later
-            attachments: 0 // Will be implemented later
+            comments: 0,
+            attachments: 0
           }))
       }));
-
-      setColumns(transformedColumns);
-    } catch (error) {
-      console.error('Error fetching project data:', error);
-      toast({
-        title: "Erro ao carregar projeto",
-        description: "Não foi possível carregar os dados do projeto",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
+      setKanbanColumns(transformedColumns);
     }
-  };
+  }, [columns, tasks]);
 
   const handleTaskMove = async (taskId: string, fromColumnId: string, toColumnId: string) => {
     try {
@@ -114,32 +70,10 @@ export default function ProjectKanban() {
       const toColumn = columns.find(col => col.id === toColumnId);
       if (!toColumn) return;
 
-      // Update task status in Supabase
-      const { error } = await supabase
-        .from('tasks')
-        .update({ status: toColumn.title })
-        .eq('id', taskId);
-
+      // Update task status using the useTasks hook
+      const { error } = await updateTask(taskId, { status: toColumn.title });
+      
       if (error) throw error;
-
-      // Update local state
-      setColumns(prevColumns => {
-        const newColumns = [...prevColumns];
-        
-        // Find and remove task from source column
-        const fromColumn = newColumns.find(col => col.id === fromColumnId);
-        const targetColumn = newColumns.find(col => col.id === toColumnId);
-        
-        if (fromColumn && targetColumn) {
-          const taskIndex = fromColumn.tasks.findIndex(task => task.id === taskId);
-          if (taskIndex !== -1) {
-            const [task] = fromColumn.tasks.splice(taskIndex, 1);
-            targetColumn.tasks.push(task);
-          }
-        }
-        
-        return newColumns;
-      });
 
       toast({
         title: "Tarefa movida com sucesso!",
@@ -168,45 +102,61 @@ export default function ProjectKanban() {
   };
 
   const handleSaveTask = async () => {
-    if (!selectedTask) return;
-
     try {
-      const { error } = await supabase
-        .from('tasks')
-        .update({
+      if (isNewTask) {
+        // Create new task
+        const targetColumn = columns.find(col => col.id === newTaskColumnId);
+        if (!targetColumn) return;
+
+        const { error } = await createTask({
+          title: taskFormData.title,
+          description: taskFormData.description || null,
+          priority: taskFormData.priority,
+          status: targetColumn.title,
+          due_date: taskFormData.dueDate?.toISOString() || null,
+          tags: taskFormData.tags,
+          project_id: id!,
+        });
+
+        if (error) throw error;
+
+        toast({
+          title: "Tarefa criada com sucesso!",
+        });
+      } else if (selectedTask) {
+        // Update existing task
+        const { error } = await updateTask(selectedTask.id, {
           title: taskFormData.title,
           description: taskFormData.description || null,
           priority: taskFormData.priority,
           due_date: taskFormData.dueDate?.toISOString() || null,
           tags: taskFormData.tags,
-        })
-        .eq('id', selectedTask.id);
+        });
 
-      if (error) throw error;
+        if (error) throw error;
 
-      // Update local state
-      setColumns(prevColumns => 
-        prevColumns.map(column => ({
-          ...column,
-          tasks: column.tasks.map(task => 
-            task.id === selectedTask.id 
-              ? { ...task, ...taskFormData }
-              : task
-          )
-        }))
-      );
-
-      toast({
-        title: "Tarefa atualizada com sucesso!",
-      });
+        toast({
+          title: "Tarefa atualizada com sucesso!",
+        });
+      }
 
       setIsTaskModalOpen(false);
       setSelectedTask(null);
+      setIsNewTask(false);
+      setNewTaskColumnId("");
+      setTaskFormData({
+        title: "",
+        description: "",
+        priority: "medium",
+        assignedTo: "",
+        tags: [],
+        dueDate: undefined
+      });
     } catch (error) {
-      console.error('Error updating task:', error);
+      console.error('Error saving task:', error);
       toast({
-        title: "Erro ao atualizar tarefa",
-        description: "Não foi possível atualizar a tarefa",
+        title: "Erro ao salvar tarefa",
+        description: "Não foi possível salvar a tarefa",
         variant: "destructive",
       });
     }
@@ -228,9 +178,20 @@ export default function ProjectKanban() {
     });
   };
 
-  useEffect(() => {
-    fetchProjectData();
-  }, [id, user]);
+  const handleAddTask = (columnId: string) => {
+    setNewTaskColumnId(columnId);
+    setIsNewTask(true);
+    setSelectedTask(null);
+    setTaskFormData({
+      title: "",
+      description: "",
+      priority: "medium",
+      assignedTo: "",
+      tags: [],
+      dueDate: undefined
+    });
+    setIsTaskModalOpen(true);
+  };
 
   if (loading) {
     return (
@@ -278,10 +239,10 @@ export default function ProjectKanban() {
 
       <div className="min-h-[600px]">
         <KanbanBoard
-          columns={columns}
+          columns={kanbanColumns}
           onTaskMove={handleTaskMove}
           onTaskClick={handleTaskClick}
-          onAddTask={(columnId) => console.log("Add task to column:", columnId)}
+          onAddTask={handleAddTask}
           onEditColumn={(columnId) => console.log("Edit column:", columnId)}
         />
       </div>
@@ -291,7 +252,7 @@ export default function ProjectKanban() {
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {selectedTask ? "Editar Tarefa" : "Nova Tarefa"}
+              {isNewTask ? "Nova Tarefa" : "Editar Tarefa"}
             </DialogTitle>
           </DialogHeader>
           
