@@ -14,6 +14,75 @@ export type Database = {
   }
   public: {
     Tables: {
+      achievements: {
+        Row: {
+          category: string
+          condition_type: string
+          condition_value: number
+          created_at: string
+          description: string
+          icon: string
+          id: string
+          title: string
+          xp_reward: number
+        }
+        Insert: {
+          category?: string
+          condition_type: string
+          condition_value: number
+          created_at?: string
+          description: string
+          icon?: string
+          id?: string
+          title: string
+          xp_reward?: number
+        }
+        Update: {
+          category?: string
+          condition_type?: string
+          condition_value?: number
+          created_at?: string
+          description?: string
+          icon?: string
+          id?: string
+          title?: string
+          xp_reward?: number
+        }
+        Relationships: []
+      }
+      badges: {
+        Row: {
+          condition_type: string
+          condition_value: number
+          created_at: string
+          description: string
+          icon: string
+          id: string
+          rarity: string
+          title: string
+        }
+        Insert: {
+          condition_type: string
+          condition_value: number
+          created_at?: string
+          description: string
+          icon?: string
+          id?: string
+          rarity?: string
+          title: string
+        }
+        Update: {
+          condition_type?: string
+          condition_value?: number
+          created_at?: string
+          description?: string
+          icon?: string
+          id?: string
+          rarity?: string
+          title?: string
+        }
+        Relationships: []
+      }
       coupons: {
         Row: {
           code: string
@@ -129,6 +198,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      levels: {
+        Row: {
+          created_at: string
+          id: string
+          level: number
+          rewards: string[]
+          title: string
+          xp_required: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          level: number
+          rewards?: string[]
+          title: string
+          xp_required: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          level?: number
+          rewards?: string[]
+          title?: string
+          xp_required?: number
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
@@ -301,6 +397,48 @@ export type Database = {
           },
         ]
       }
+      user_achievements: {
+        Row: {
+          achievement_id: string
+          id: string
+          unlocked_at: string
+          user_id: string
+        }
+        Insert: {
+          achievement_id: string
+          id?: string
+          unlocked_at?: string
+          user_id: string
+        }
+        Update: {
+          achievement_id?: string
+          id?: string
+          unlocked_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_badges: {
+        Row: {
+          badge_id: string
+          id: string
+          unlocked_at: string
+          user_id: string
+        }
+        Insert: {
+          badge_id: string
+          id?: string
+          unlocked_at?: string
+          user_id: string
+        }
+        Update: {
+          badge_id?: string
+          id?: string
+          unlocked_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_coupons: {
         Row: {
           applied_at: string
@@ -376,6 +514,45 @@ export type Database = {
             referencedColumns: ["user_id"]
           },
         ]
+      }
+      user_stats: {
+        Row: {
+          created_at: string
+          id: string
+          last_activity_date: string | null
+          level: number
+          projects_completed: number
+          streak: number
+          tasks_completed: number
+          updated_at: string
+          user_id: string
+          xp: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_activity_date?: string | null
+          level?: number
+          projects_completed?: number
+          streak?: number
+          tasks_completed?: number
+          updated_at?: string
+          user_id: string
+          xp?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_activity_date?: string | null
+          level?: number
+          projects_completed?: number
+          streak?: number
+          tasks_completed?: number
+          updated_at?: string
+          user_id?: string
+          xp?: number
+        }
+        Relationships: []
       }
     }
     Views: {
