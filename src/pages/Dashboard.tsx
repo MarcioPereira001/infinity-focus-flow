@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTasks } from "@/hooks/useTasks";
@@ -37,15 +38,15 @@ export default function Dashboard() {
     setDateRange(range);
   };
 
-  const handleCreateTask = async (taskData: any) => {
-    await createTask(taskData);
+  const handleTaskCreated = async (task: any) => {
     setIsTaskModalOpen(false);
+    // Task creation is handled by the modal internally
   };
 
-  const handleUpdateTask = async (taskId: string, taskData: any) => {
-    await updateTask(taskId, taskData);
+  const handleTaskUpdated = async (task: any) => {
     setIsTaskModalOpen(false);
     setEditingTask(null);
+    // Task update is handled by the modal internally
   };
 
   const handleDeleteTask = async (taskId: string) => {
@@ -152,8 +153,9 @@ export default function Dashboard() {
           setIsTaskModalOpen(false);
           setEditingTask(null);
         }}
-        task={editingTask}
-        onSubmit={editingTask ? handleUpdateTask : handleCreateTask}
+        existingTask={editingTask}
+        onTaskCreated={handleTaskCreated}
+        onTaskUpdated={handleTaskUpdated}
       />
     </div>
   );
