@@ -26,8 +26,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Melhor lógica para verificar se o trial expirou
   const isTrialExpired = profile?.plan_status === 'expired' || 
-    (profile?.trial_ends_at && new Date(profile.trial_ends_at) < new Date());
+    (profile?.trial_ends_at && new Date(profile.trial_ends_at) < new Date()) ||
+    (profile?.plan_status === 'trial' && profile?.trial_ends_at && new Date(profile.trial_ends_at) < new Date());
 
   const fetchProfile = async (userId: string) => {
     try {

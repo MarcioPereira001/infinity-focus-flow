@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-d
 import { AuthProvider } from "@/contexts/AuthContext";
 import { AppLayout } from "@/components/layout/app-layout";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTrialNotifications } from "@/hooks/useTrialNotifications";
 
 // Páginas
 import Landing from "@/pages/Landing";
@@ -23,6 +24,9 @@ const LoadingFallback = () => (
 // Componente de rota protegida
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
+  
+  // Hook para notificações de trial
+  useTrialNotifications();
 
   if (loading) {
     return <LoadingFallback />;
