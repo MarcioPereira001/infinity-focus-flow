@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -15,7 +16,6 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   updateProfile: (updates: Partial<Profile>) => Promise<{ error: any }>;
   updatePassword: (password: string) => Promise<{ error: any }>;
-  isTrialExpired: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -25,11 +25,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
-
-  // Melhor lógica para verificar se o trial expirou
-  const isTrialExpired = profile?.plan_status === 'expired' || 
-    (profile?.trial_ends_at && new Date(profile.trial_ends_at) < new Date()) ||
-    (profile?.plan_status === 'trial' && profile?.trial_ends_at && new Date(profile.trial_ends_at) < new Date());
 
   const fetchProfile = async (userId: string) => {
     try {
@@ -142,7 +137,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signOut,
     updateProfile,
     updatePassword,
-    isTrialExpired,
   };
 
   return (

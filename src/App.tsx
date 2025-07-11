@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
@@ -12,7 +13,6 @@ import Projects from "@/pages/Projects";
 import ProjectKanban from "@/pages/ProjectKanban";
 import Analytics from "@/pages/Analytics";
 import Settings from "@/pages/Settings";
-import Checkout from "@/pages/Checkout";
 
 // Componente de carregamento
 const LoadingFallback = () => (
@@ -24,9 +24,6 @@ const LoadingFallback = () => (
 // Componente de rota protegida
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
-  
-  // Hook para notificações de trial
-  useTrialNotifications();
 
   if (loading) {
     return <LoadingFallback />;
@@ -72,11 +69,6 @@ function App() {
           <Route path="/settings" element={
             <ProtectedRoute>
               <Settings />
-            </ProtectedRoute>
-          } />
-          <Route path="/checkout" element={
-            <ProtectedRoute>
-              <Checkout />
             </ProtectedRoute>
           } />
           <Route path="*" element={<Navigate to="/" replace />} />
