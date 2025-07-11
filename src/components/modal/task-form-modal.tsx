@@ -51,6 +51,12 @@ export function TaskFormModal({
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("basic");
   
+  // Estados para notificações
+  const [notificationType, setNotificationType] = useState("none");
+  const [notificationFrequency, setNotificationFrequency] = useState("daily");
+  const [notificationDays, setNotificationDays] = useState<number[]>([]);
+  const [notificationTime, setNotificationTime] = useState("09:00");
+  
   // Estados para dados relacionados
   const [projects, setProjects] = useState<any[]>([]);
   const [goals, setGoals] = useState<any[]>([]);
@@ -64,6 +70,10 @@ export function TaskFormModal({
       setStatus(existingTask.status || "Novo");
       setIsIndefinite(existingTask.is_indefinite || false);
       setSelectedGoals(existingTask.goal_ids || []);
+      setNotificationType(existingTask.notification_type || "none");
+      setNotificationFrequency(existingTask.notification_frequency || "daily");
+      setNotificationDays(existingTask.notification_days || []);
+      setNotificationTime(existingTask.notification_time || "09:00");
       
       if (existingTask.start_date) {
         setStartDate(new Date(existingTask.start_date));
@@ -133,6 +143,10 @@ export function TaskFormModal({
     setIsIndefinite(false);
     setSelectedProject(projectId);
     setSelectedGoals([]);
+    setNotificationType("none");
+    setNotificationFrequency("daily");
+    setNotificationDays([]);
+    setNotificationTime("09:00");
     setActiveTab("basic");
   };
   
@@ -186,6 +200,10 @@ export function TaskFormModal({
         due_date: !isIndefinite && dueDate ? dueDate.toISOString() : null,
         is_indefinite: isIndefinite,
         goal_ids: selectedGoals.length > 0 ? selectedGoals : null,
+        notification_type: notificationType,
+        notification_frequency: notificationFrequency,
+        notification_days: notificationDays.length > 0 ? notificationDays : null,
+        notification_time: notificationTime,
         updated_at: new Date().toISOString(),
       };
       
@@ -259,9 +277,10 @@ export function TaskFormModal({
         </DialogHeader>
         
         <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
-          <TabsList className="grid grid-cols-2 mb-4">
+          <TabsList className="grid grid-cols-3 mb-4">
             <TabsTrigger value="basic">Básico</TabsTrigger>
             <TabsTrigger value="advanced">Avançado</TabsTrigger>
+            <TabsTrigger value="notifications">Notificações</TabsTrigger>
           </TabsList>
           
           <TabsContent value="basic" className="space-y-4">
@@ -431,6 +450,76 @@ export function TaskFormModal({
                   </div>
                 </div>
               )}
+              
+              <div className="space-y-2">
+                <Label>Notificações</Label>
+                <Select value={notificationType} onValueChange={setNotificationType}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Tipo de notificação" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nenhuma</SelectItem>
+                    <SelectItem value="reminder">Lembrete</SelectItem>
+                    <SelectItem value="deadline">Prazo</SelectItem>
+                    <SelectItem value="both">Ambos</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="notifications" className="space-y-4">
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Frequência de notificação</Label>
+                <Select value={notificationFrequency} onValueChange={setNotificationFrequency}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Frequência" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="daily">Diariamente</SelectItem>
+                    <SelectItem value="weekly">Semanalmente</SelectItem>
+                    <SelectItem value="monthly">Mensalmente</SelectItem>
+                    <SelectItem value="custom">Dias específicos</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              {notificationFrequency === "custom" && (
+                <div className="space-y-2">
+                  <Label>Dias da semana</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((day, index) => (
+                      <div key={index} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`day-${index}`}
+                          checked={notificationDays.includes(index)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setNotificationDays(prev => [...prev, index]);
+                            } else {
+                              setNotificationDays(prev => prev.filter(d => d !== index));
+                            }
+                          }}
+                        />
+                        <Label htmlFor={`day-${index}`} className="text-sm">
+                          {day}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              <div className="space-y-2">
+                <Label htmlFor="notification-time">Horário da notificação</Label>
+                <Input
+                  id="notification-time"
+                  type="time"
+                  value={notificationTime}
+                  onChange={(e) => setNotificationTime(e.target.value)}
+                />
+              </div>
             </div>
           </TabsContent>
         </Tabs>

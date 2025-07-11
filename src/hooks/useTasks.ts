@@ -23,7 +23,8 @@ export function useTasks(projectId?: string) {
           responsible:profiles!tasks_responsible_id_fkey(full_name),
           project:projects(name)
         `)
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .is('deleted_at', null);
 
       if (projectId) {
         query = query.eq('project_id', projectId);
@@ -123,9 +124,10 @@ export function useTasks(projectId?: string) {
   };
 
   const deleteTask = async (taskId: string) => {
+    // Soft delete - apenas marcar como deletado
     const { error } = await supabase
       .from('tasks')
-      .delete()
+      .update({ deleted_at: new Date().toISOString() })
       .eq('id', taskId);
 
     if (!error) {

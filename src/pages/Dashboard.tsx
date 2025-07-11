@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { AppLayout } from "@/components/layout/app-layout";
+// Remove import desnecessário
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
@@ -117,20 +117,17 @@ export default function Dashboard() {
   };
 
   if (loading) {
-    return (
-      <AppLayout>
-        <div className="container py-6">
+  return (
+    <div className="container py-6">
           <div className="flex items-center justify-center h-64">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          </div>
         </div>
-      </AppLayout>
-    );
+      </div>
+  );
   }
 
   return (
-    <AppLayout>
-      <div className="container py-6">
+    <div className="container py-6">
         <div className="mb-6">
           <h1 className="text-3xl font-bold">Dashboard</h1>
           <p className="text-muted-foreground">
@@ -297,7 +294,6 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         </div>
-      </div>
-    </AppLayout>
+    </div>
   );
 }

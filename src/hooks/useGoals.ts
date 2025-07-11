@@ -21,6 +21,7 @@ export function useGoals() {
         .from('goals')
         .select('*')
         .eq('user_id', user.id)
+        .is('deleted_at', null)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -69,9 +70,10 @@ export function useGoals() {
   };
 
   const deleteGoal = async (goalId: string) => {
+    // Soft delete - apenas marcar como deletado
     const { error } = await supabase
       .from('goals')
-      .delete()
+      .update({ deleted_at: new Date().toISOString() })
       .eq('id', goalId);
 
     if (!error) {

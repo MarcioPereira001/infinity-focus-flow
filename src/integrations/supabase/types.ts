@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           created_at: string | null
           current_value: number | null
+          deleted_at: string | null
           description: string | null
           end_date: string | null
           id: string
@@ -33,6 +34,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           current_value?: number | null
+          deleted_at?: string | null
           description?: string | null
           end_date?: string | null
           id?: string
@@ -48,6 +50,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           current_value?: number | null
+          deleted_at?: string | null
           description?: string | null
           end_date?: string | null
           id?: string
@@ -162,6 +165,7 @@ export type Database = {
       projects: {
         Row: {
           created_at: string
+          deleted_at: string | null
           description: string | null
           end_date: string | null
           id: string
@@ -174,6 +178,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          deleted_at?: string | null
           description?: string | null
           end_date?: string | null
           id?: string
@@ -186,6 +191,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          deleted_at?: string | null
           description?: string | null
           end_date?: string | null
           id?: string
@@ -201,11 +207,16 @@ export type Database = {
       tasks: {
         Row: {
           created_at: string
+          deleted_at: string | null
           description: string | null
           due_date: string | null
           goal_ids: string[] | null
           id: string
           is_indefinite: boolean | null
+          notification_days: number[] | null
+          notification_frequency: string | null
+          notification_time: string | null
+          notification_type: string | null
           priority: string | null
           project_id: string | null
           responsible_id: string | null
@@ -218,11 +229,16 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          deleted_at?: string | null
           description?: string | null
           due_date?: string | null
           goal_ids?: string[] | null
           id?: string
           is_indefinite?: boolean | null
+          notification_days?: number[] | null
+          notification_frequency?: string | null
+          notification_time?: string | null
+          notification_type?: string | null
           priority?: string | null
           project_id?: string | null
           responsible_id?: string | null
@@ -235,11 +251,16 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          deleted_at?: string | null
           description?: string | null
           due_date?: string | null
           goal_ids?: string[] | null
           id?: string
           is_indefinite?: boolean | null
+          notification_days?: number[] | null
+          notification_frequency?: string | null
+          notification_time?: string | null
+          notification_type?: string | null
           priority?: string | null
           project_id?: string | null
           responsible_id?: string | null
@@ -260,13 +281,53 @@ export type Database = {
           },
         ]
       }
+      trash_items: {
+        Row: {
+          created_at: string
+          deleted_at: string
+          expires_at: string
+          id: string
+          item_data: Json
+          item_id: string
+          item_type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          deleted_at?: string
+          expires_at?: string
+          id?: string
+          item_data: Json
+          item_id: string
+          item_type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          deleted_at?: string
+          expires_at?: string
+          id?: string
+          item_data?: Json
+          item_id?: string
+          item_type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_settings: {
         Row: {
           created_at: string
           email_notifications: boolean | null
+          goal_reminder_notifications: boolean | null
           id: string
+          project_update_notifications: boolean | null
           project_updates: boolean | null
+          push_notifications: boolean | null
           reminder_time: string | null
+          security_activity_log: boolean | null
+          security_login_alerts: boolean | null
+          security_two_factor: boolean | null
+          task_deadline_notifications: boolean | null
           task_reminders: boolean | null
           updated_at: string
           user_id: string
@@ -274,9 +335,16 @@ export type Database = {
         Insert: {
           created_at?: string
           email_notifications?: boolean | null
+          goal_reminder_notifications?: boolean | null
           id?: string
+          project_update_notifications?: boolean | null
           project_updates?: boolean | null
+          push_notifications?: boolean | null
           reminder_time?: string | null
+          security_activity_log?: boolean | null
+          security_login_alerts?: boolean | null
+          security_two_factor?: boolean | null
+          task_deadline_notifications?: boolean | null
           task_reminders?: boolean | null
           updated_at?: string
           user_id: string
@@ -284,9 +352,16 @@ export type Database = {
         Update: {
           created_at?: string
           email_notifications?: boolean | null
+          goal_reminder_notifications?: boolean | null
           id?: string
+          project_update_notifications?: boolean | null
           project_updates?: boolean | null
+          push_notifications?: boolean | null
           reminder_time?: string | null
+          security_activity_log?: boolean | null
+          security_login_alerts?: boolean | null
+          security_two_factor?: boolean | null
+          task_deadline_notifications?: boolean | null
           task_reminders?: boolean | null
           updated_at?: string
           user_id?: string
@@ -298,6 +373,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cleanup_expired_trash: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       has_project_access: {
         Args: { project_uuid: string }
         Returns: boolean

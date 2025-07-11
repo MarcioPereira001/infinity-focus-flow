@@ -29,7 +29,8 @@ export function useProjects() {
           *,
           project_members!inner(role)
         `)
-        .or(`owner_id.eq.${user.id},project_members.user_id.eq.${user.id}`);
+        .or(`owner_id.eq.${user.id},project_members.user_id.eq.${user.id}`)
+        .is('deleted_at', null);
 
       if (error) throw error;
       setProjects(data || []);
@@ -83,9 +84,10 @@ export function useProjects() {
   };
 
   const deleteProject = async (projectId: string) => {
+    // Soft delete - apenas marcar como deletado  
     const { error } = await supabase
       .from('projects')
-      .delete()
+      .update({ deleted_at: new Date().toISOString() })
       .eq('id', projectId);
 
     if (!error) {
