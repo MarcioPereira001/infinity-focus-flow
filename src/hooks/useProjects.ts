@@ -10,7 +10,7 @@ export type ProjectUpdate = TablesUpdate<'projects'>;
 
 export type KanbanColumn = Tables<'kanban_columns'>;
 export type ProjectMember = Tables<'project_members'> & {
-  profile?: Tables<'profiles'>;
+  profiles?: Tables<'profiles'>;
 };
 
 export function useProjects() {
@@ -157,12 +157,12 @@ export function useProject(projectId?: string) {
 
       if (columnsError) throw columnsError;
 
-      // Fetch members with profile data
+      // Fetch members with profile data using correct syntax
       const { data: membersData, error: membersError } = await supabase
         .from('project_members')
         .select(`
           *,
-          profile:profiles!project_members_user_id_fkey(*)
+          profiles(*)
         `)
         .eq('project_id', projectId);
 
@@ -216,7 +216,7 @@ export function useProject(projectId?: string) {
         })
         .select(`
           *,
-          profile:profiles!project_members_user_id_fkey(*)
+          profiles(*)
         `)
         .single();
 

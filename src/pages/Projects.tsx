@@ -122,7 +122,7 @@ export default function Projects() {
           project_id,
           user_id,
           role,
-          profiles:user_id (
+          profiles(
             full_name,
             avatar_url
           )
