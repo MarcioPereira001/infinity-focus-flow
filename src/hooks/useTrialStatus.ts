@@ -8,27 +8,10 @@ export function useTrialStatus() {
   const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
-    if (!profile?.trial_ends_at) return;
-
-    const calculateDaysRemaining = () => {
-      const trialEndDate = new Date(profile.trial_ends_at!);
-      const currentDate = new Date();
-      const diffTime = trialEndDate.getTime() - currentDate.getTime();
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      
-      setDaysRemaining(diffDays);
-
-      // Mostrar modal se faltam 3 dias ou menos, ou se já expirou
-      const shouldShowModal = diffDays <= 3 && profile.plan_status === 'trial';
-      setShowModal(shouldShowModal);
-    };
-
-    calculateDaysRemaining();
-
-    // Atualizar a cada hora
-    const interval = setInterval(calculateDaysRemaining, 60 * 60 * 1000);
-
-    return () => clearInterval(interval);
+    // Since we removed the trial system, this hook no longer performs any operations
+    // Just maintaining the interface for backward compatibility
+    setDaysRemaining(0);
+    setShowModal(false);
   }, [profile]);
 
   const hideModal = () => {
@@ -36,10 +19,10 @@ export function useTrialStatus() {
   };
 
   return {
-    daysRemaining,
-    showModal,
+    daysRemaining: 0,
+    showModal: false,
     hideModal,
-    isTrialExpired: daysRemaining <= 0,
-    isTrialExpiring: daysRemaining <= 3 && daysRemaining > 0
+    isTrialExpired: false,
+    isTrialExpiring: false
   };
 }

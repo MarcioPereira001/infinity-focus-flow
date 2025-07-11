@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Tables, TablesInsert, TablesUpdate } from '@/integrations/supabase/types';
@@ -156,7 +157,7 @@ export function useProject(projectId?: string) {
 
       if (columnsError) throw columnsError;
 
-      // Fetch members
+      // Fetch members with profile data
       const { data: membersData, error: membersError } = await supabase
         .from('project_members')
         .select(`
@@ -185,7 +186,7 @@ export function useProject(projectId?: string) {
       const { data: profiles, error: profileError } = await supabase
         .from('profiles')
         .select('user_id, full_name')
-        .ilike('full_name', `%${email}%`); // Search by name or improve with email field
+        .ilike('full_name', `%${email}%`);
 
       if (profileError) throw profileError;
       if (!profiles || profiles.length === 0) {

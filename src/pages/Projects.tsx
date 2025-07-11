@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { ProjectFormModal } from "@/components/modal/project-form-modal";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, FolderKanban, Users, Calendar, MoreVertical, Trash2, Edit, Share2 } from "lucide-react";
+import { Plus, FolderKanban, Users, Calendar, MoreVertical, Trash2, Edit } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -140,7 +140,7 @@ export default function Projects() {
         membersByProject[member.project_id].push({
           id: member.user_id,
           role: member.role,
-          full_name: member.profiles?.full_name,
+          full_name: member.profiles?.full_name || 'Usuário',
           avatar_url: member.profiles?.avatar_url
         });
       });
