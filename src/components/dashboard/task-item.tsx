@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -39,13 +38,11 @@ export function TaskItem({ task, onToggleComplete, onEdit, onDelete, onClick }: 
   const [isCompleted, setIsCompleted] = useState(task.status === 'Concluído');
   const [isUpdating, setIsUpdating] = useState(false);
 
-  const handleToggleComplete = async (event: React.MouseEvent) => {
-    event.stopPropagation();
-    
-    if (isUpdating) return;
+  const handleToggleComplete = async (checked: boolean | "indeterminate") => {
+    if (isUpdating || checked === "indeterminate") return;
     
     setIsUpdating(true);
-    const newStatus = isCompleted ? 'Novo' : 'Concluído';
+    const newStatus = checked ? 'Concluído' : 'Novo';
     
     try {
       const { error } = await supabase
@@ -58,7 +55,7 @@ export function TaskItem({ task, onToggleComplete, onEdit, onDelete, onClick }: 
       
       if (error) throw error;
       
-      setIsCompleted(!isCompleted);
+      setIsCompleted(checked);
       
       if (onToggleComplete) {
         onToggleComplete(task.id);
