@@ -10,7 +10,7 @@ export type ProjectUpdate = TablesUpdate<'projects'>;
 
 export type KanbanColumn = Tables<'kanban_columns'>;
 export type ProjectMember = Tables<'project_members'> & {
-  profiles?: Tables<'profiles'>;
+  profiles?: Tables<'profiles'> | null;
 };
 
 export function useProjects() {
@@ -157,44 +157,33 @@ export function useProject(projectId?: string) {
 
       if (columnsError) throw columnsError;
 
-      // Fetch members with profile data - using explicit joins
-      const { data: membersData, error: membersError } = await supabase
+      // Fetch members - use a simpler approach that always works
+      const { data: simpleMembersData, error: simpleMembersError } = await supabase
         .from('project_members')
-        .select(`
-          *,
-          profiles!project_members_user_id_profiles_user_id_fkey(*)
-        `)
+        .select('*')
         .eq('project_id', projectId);
 
-      if (membersError) {
-        console.error('Error fetching members:', membersError);
-        // If the explicit foreign key doesn't work, try a simpler approach
-        const { data: simpleMembersData, error: simpleMembersError } = await supabase
-          .from('project_members')
-          .select('*')
-          .eq('project_id', projectId);
+      if (simpleMembersError) throw simpleMembersError;
 
-        if (simpleMembersError) throw simpleMembersError;
+      // Fetch profiles separately and merge
+      const memberIds = simpleMembersData?.map(m => m.user_id) || [];
+      let membersWithProfiles: ProjectMember[] = [];
 
-        // Fetch profiles separately and merge
-        const memberIds = simpleMembersData?.map(m => m.user_id) || [];
+      if (memberIds.length > 0) {
         const { data: profilesData } = await supabase
           .from('profiles')
           .select('*')
           .in('user_id', memberIds);
 
-        const membersWithProfiles = simpleMembersData?.map(member => ({
+        membersWithProfiles = simpleMembersData?.map(member => ({
           ...member,
           profiles: profilesData?.find(p => p.user_id === member.user_id) || null
         })) || [];
-
-        setMembers(membersWithProfiles);
-      } else {
-        setMembers(membersData || []);
       }
 
       setProject(projectData);
       setColumns(columnsData || []);
+      setMembers(membersWithProfiles);
     } catch (error) {
       console.error('Error fetching project:', error);
     } finally {
@@ -249,7 +238,7 @@ export function useProject(projectId?: string) {
           .eq('user_id', data.user_id)
           .single();
 
-        const newMember = {
+        const newMember: ProjectMember = {
           ...data,
           profiles: profileData || null
         };
