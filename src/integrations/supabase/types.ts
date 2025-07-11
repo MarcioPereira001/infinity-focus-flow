@@ -14,114 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      achievements: {
-        Row: {
-          category: string
-          condition_type: string
-          condition_value: number
-          created_at: string
-          description: string
-          icon: string
-          id: string
-          title: string
-          xp_reward: number
-        }
-        Insert: {
-          category?: string
-          condition_type: string
-          condition_value: number
-          created_at?: string
-          description: string
-          icon?: string
-          id?: string
-          title: string
-          xp_reward?: number
-        }
-        Update: {
-          category?: string
-          condition_type?: string
-          condition_value?: number
-          created_at?: string
-          description?: string
-          icon?: string
-          id?: string
-          title?: string
-          xp_reward?: number
-        }
-        Relationships: []
-      }
-      badges: {
-        Row: {
-          condition_type: string
-          condition_value: number
-          created_at: string
-          description: string
-          icon: string
-          id: string
-          rarity: string
-          title: string
-        }
-        Insert: {
-          condition_type: string
-          condition_value: number
-          created_at?: string
-          description: string
-          icon?: string
-          id?: string
-          rarity?: string
-          title: string
-        }
-        Update: {
-          condition_type?: string
-          condition_value?: number
-          created_at?: string
-          description?: string
-          icon?: string
-          id?: string
-          rarity?: string
-          title?: string
-        }
-        Relationships: []
-      }
-      coupons: {
-        Row: {
-          code: string
-          created_at: string
-          current_uses: number | null
-          discount_percent: number
-          expires_at: string | null
-          id: string
-          is_free_month: boolean | null
-          is_permanent: boolean | null
-          max_uses: number | null
-          updated_at: string
-        }
-        Insert: {
-          code: string
-          created_at?: string
-          current_uses?: number | null
-          discount_percent: number
-          expires_at?: string | null
-          id?: string
-          is_free_month?: boolean | null
-          is_permanent?: boolean | null
-          max_uses?: number | null
-          updated_at?: string
-        }
-        Update: {
-          code?: string
-          created_at?: string
-          current_uses?: number | null
-          discount_percent?: number
-          expires_at?: string | null
-          id?: string
-          is_free_month?: boolean | null
-          is_permanent?: boolean | null
-          max_uses?: number | null
-          updated_at?: string
-        }
-        Relationships: []
-      }
       goals: {
         Row: {
           created_at: string | null
@@ -208,41 +100,12 @@ export type Database = {
           },
         ]
       }
-      levels: {
-        Row: {
-          created_at: string
-          id: string
-          level: number
-          rewards: string[]
-          title: string
-          xp_required: number
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          level: number
-          rewards?: string[]
-          title: string
-          xp_required: number
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          level?: number
-          rewards?: string[]
-          title?: string
-          xp_required?: number
-        }
-        Relationships: []
-      }
       profiles: {
         Row: {
           avatar_url: string | null
           created_at: string
           full_name: string | null
           id: string
-          plan_status: string | null
-          trial_ends_at: string | null
           updated_at: string
           user_id: string
         }
@@ -251,8 +114,6 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id?: string
-          plan_status?: string | null
-          trial_ends_at?: string | null
           updated_at?: string
           user_id: string
         }
@@ -261,8 +122,6 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id?: string
-          plan_status?: string | null
-          trial_ends_at?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -297,13 +156,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "project_members_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["user_id"]
           },
         ]
       }
@@ -344,15 +196,7 @@ export type Database = {
           start_date?: string | null
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "projects_owner_id_fkey"
-            columns: ["owner_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["user_id"]
-          },
-        ]
+        Relationships: []
       }
       tasks: {
         Row: {
@@ -414,97 +258,6 @@ export type Database = {
             referencedRelation: "projects"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "tasks_responsible_id_fkey"
-            columns: ["responsible_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["user_id"]
-          },
-          {
-            foreignKeyName: "tasks_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["user_id"]
-          },
-        ]
-      }
-      user_achievements: {
-        Row: {
-          achievement_id: string
-          id: string
-          unlocked_at: string
-          user_id: string
-        }
-        Insert: {
-          achievement_id: string
-          id?: string
-          unlocked_at?: string
-          user_id: string
-        }
-        Update: {
-          achievement_id?: string
-          id?: string
-          unlocked_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      user_badges: {
-        Row: {
-          badge_id: string
-          id: string
-          unlocked_at: string
-          user_id: string
-        }
-        Insert: {
-          badge_id: string
-          id?: string
-          unlocked_at?: string
-          user_id: string
-        }
-        Update: {
-          badge_id?: string
-          id?: string
-          unlocked_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      user_coupons: {
-        Row: {
-          applied_at: string
-          coupon_code: string
-          expires_at: string | null
-          id: string
-          is_active: boolean | null
-          user_id: string
-        }
-        Insert: {
-          applied_at?: string
-          coupon_code: string
-          expires_at?: string | null
-          id?: string
-          is_active?: boolean | null
-          user_id: string
-        }
-        Update: {
-          applied_at?: string
-          coupon_code?: string
-          expires_at?: string | null
-          id?: string
-          is_active?: boolean | null
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "user_coupons_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["user_id"]
-          },
         ]
       }
       user_settings: {
@@ -537,53 +290,6 @@ export type Database = {
           task_reminders?: boolean | null
           updated_at?: string
           user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "user_settings_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: true
-            referencedRelation: "profiles"
-            referencedColumns: ["user_id"]
-          },
-        ]
-      }
-      user_stats: {
-        Row: {
-          created_at: string
-          id: string
-          last_activity_date: string | null
-          level: number
-          projects_completed: number
-          streak: number
-          tasks_completed: number
-          updated_at: string
-          user_id: string
-          xp: number
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          last_activity_date?: string | null
-          level?: number
-          projects_completed?: number
-          streak?: number
-          tasks_completed?: number
-          updated_at?: string
-          user_id: string
-          xp?: number
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          last_activity_date?: string | null
-          level?: number
-          projects_completed?: number
-          streak?: number
-          tasks_completed?: number
-          updated_at?: string
-          user_id?: string
-          xp?: number
         }
         Relationships: []
       }

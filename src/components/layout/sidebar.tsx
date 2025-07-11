@@ -1,149 +1,63 @@
-import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+
+import { Link, useLocation } from "react-router-dom";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { 
-  LayoutDashboard, 
+  Home, 
   FolderKanban, 
+  Target, 
   BarChart3, 
   Settings, 
-  Menu,
-  X,
-  LogOut,
-  Trophy // Adicionado a importação do ícone Trophy
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { useAuth } from '@/contexts/AuthContext';
-import { cn } from '@/lib/utils';
+  Trash2 
+} from "lucide-react";
 
 const navigation = [
-  {
-    name: 'Dashboard',
-    href: '/dashboard',
-    icon: LayoutDashboard,
-  },
-  {
-    name: 'Projetos',
-    href: '/projects',
-    icon: FolderKanban,
-  },
-  {
-    name: 'Analytics',
-    href: '/analytics',
-    icon: BarChart3,
-  },
-  {
-    name: 'Gamificação',
-    href: '/gamification',
-    icon: Trophy,
-  },
-  {
-    name: 'Configurações',
-    href: '/settings',
-    icon: Settings,
-  },
+  { name: "Dashboard", href: "/dashboard", icon: Home },
+  { name: "Projetos", href: "/projects", icon: FolderKanban },
+  { name: "Metas", href: "/analytics", icon: Target },
+  { name: "Analytics", href: "/analytics", icon: BarChart3 },
+  { name: "Lixeira", href: "/trash", icon: Trash2 },
+  { name: "Configurações", href: "/settings", icon: Settings },
 ];
 
 export function Sidebar() {
-  const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
-  const { signOut, profile } = useAuth();
-
-  const handleSignOut = async () => {
-    await signOut();
-  };
 
   return (
-    <>
-      {/* Mobile menu button */}
-      <div className="lg:hidden fixed top-4 left-4 z-50">
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={() => setIsOpen(!isOpen)}
-          className="bg-white shadow-md"
-        >
-          {isOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
-        </Button>
-      </div>
-
-      {/* Sidebar overlay for mobile */}
-      {isOpen && (
-        <div
-          className="lg:hidden fixed inset-0 z-40 bg-black bg-opacity-50"
-          onClick={() => setIsOpen(false)}
-        />
-      )}
-
-      {/* Sidebar */}
-      <div
-        className={cn(
-          "fixed inset-y-0 left-0 z-40 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0",
-          isOpen ? "translate-x-0" : "-translate-x-full"
-        )}
-      >
-        <div className="flex flex-col h-full">
-          {/* Logo */}
-          <div className="flex items-center justify-center h-16 px-4 border-b">
-            <h1 className="text-xl font-bold text-purple-600">
-              Infinity Concentration
-            </h1>
+    <aside className="w-64 bg-card border-r border-border">
+      <div className="p-6">
+        <Link to="/dashboard" className="flex items-center space-x-2">
+          <div className="h-8 w-8 bg-primary rounded-lg flex items-center justify-center">
+            <span className="font-bold text-primary-foreground">T</span>
           </div>
-
-          {/* Navigation */}
-          <nav className="flex-1 px-4 py-6 space-y-2">
-            {navigation.map((item) => {
-              const isActive = location.pathname === item.href || 
-                (item.href === '/projects' && location.pathname.startsWith('/projects/'));
-              
-              return (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  onClick={() => setIsOpen(false)}
+          <span className="text-xl font-bold">TaskFlow</span>
+        </Link>
+      </div>
+      
+      <nav className="px-4 pb-4">
+        <ul className="space-y-2">
+          {navigation.map((item) => {
+            const isActive = location.pathname === item.href;
+            return (
+              <li key={item.name}>
+                <Button
+                  asChild
+                  variant={isActive ? "secondary" : "ghost"}
                   className={cn(
-                    "flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors",
-                    isActive
-                      ? "bg-purple-100 text-purple-700"
-                      : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                    "w-full justify-start",
+                    isActive && "bg-secondary"
                   )}
                 >
-                  <item.icon className="mr-3 h-5 w-5" />
-                  {item.name}
-                </Link>
-              );
-            })}
-          </nav>
-
-          {/* User info and logout */}
-          <div className="border-t px-4 py-4">
-            <div className="flex items-center mb-3">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                  <span className="text-sm font-medium text-purple-600">
-                    {profile?.full_name?.charAt(0) || 'U'}
-                  </span>
-                </div>
-              </div>
-              <div className="ml-3">
-                <p className="text-sm font-medium text-gray-700">
-                  {profile?.full_name || 'Usuário'}
-                </p>
-                <p className="text-xs text-gray-500">
-                  {profile?.plan_status === 'trial' ? 'Teste Gratuito' : 'Plano Pro'}
-                </p>
-              </div>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleSignOut}
-              className="w-full justify-start"
-            >
-              <LogOut className="mr-2 h-4 w-4" />
-              Sair
-            </Button>
-          </div>
-        </div>
-      </div>
-    </>
+                  <Link to={item.href}>
+                    <item.icon className="mr-3 h-4 w-4" />
+                    {item.name}
+                  </Link>
+                </Button>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
+    </aside>
   );
 }

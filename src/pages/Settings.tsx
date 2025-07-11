@@ -1,20 +1,19 @@
+
 import { useState, useEffect } from "react";
-import { AppLayout } from "@/components/layout/app-layout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
-import { Camera, CreditCard, Lock, Bell, User, Trash2, LogOut, Upload, CheckCircle, AlertCircle } from "lucide-react";
+import { Camera, Lock, Bell, Trash2, LogOut, Upload } from "lucide-react";
 
 export default function Settings() {
   const { user, profile, updateProfile, signOut } = useAuth();
@@ -69,7 +68,7 @@ export default function Settings() {
           .eq('user_id', user.id)
           .single();
           
-        if (error && error.code !== 'PGRST116') { // PGRST116 = not found
+        if (error && error.code !== 'PGRST116') {
           throw error;
         }
         
@@ -95,7 +94,6 @@ export default function Settings() {
       const file = e.target.files[0];
       setSelectedFile(file);
       
-      // Criar URL para preview
       const reader = new FileReader();
       reader.onloadend = () => {
         setPreviewUrl(reader.result as string);
@@ -110,16 +108,13 @@ export default function Settings() {
     setLoadingProfile(true);
     
     try {
-      // Upload avatar if a file was selected
       let avatarUrl = profileData.avatar;
       
       if (selectedFile) {
-        // Verificar se o bucket existe
         const { data: buckets } = await supabase.storage.listBuckets();
         const bucketExists = buckets?.some(bucket => bucket.name === 'user-content');
         
         if (!bucketExists) {
-          // Criar o bucket se não existir
           const { error: createBucketError } = await supabase.storage.createBucket('user-content', {
             public: true
           });
@@ -151,7 +146,6 @@ export default function Settings() {
         avatarUrl = data.publicUrl;
       }
       
-      // Atualizar diretamente no banco de dados em vez de usar a função updateProfile
       const { error } = await supabase
         .from('profiles')
         .update({
@@ -167,7 +161,6 @@ export default function Settings() {
         title: "Perfil atualizado com sucesso!",
       });
       
-      // Update local state with new avatar URL
       setProfileData({
         ...profileData,
         avatar: avatarUrl
@@ -175,7 +168,6 @@ export default function Settings() {
       
       setSelectedFile(null);
       
-      // Recarregar a página para atualizar o perfil no contexto
       setTimeout(() => {
         window.location.reload();
       }, 1000);
@@ -198,7 +190,6 @@ export default function Settings() {
     setLoadingPassword(true);
     
     try {
-      // Validar senhas
       if (passwordData.newPassword !== passwordData.confirmPassword) {
         throw new Error("As senhas não coincidem");
       }
@@ -217,7 +208,6 @@ export default function Settings() {
         title: "Senha atualizada com sucesso!",
       });
       
-      // Limpar campos
       setPasswordData({
         currentPassword: "",
         newPassword: "",
@@ -243,18 +233,16 @@ export default function Settings() {
     setLoadingNotifications(true);
     
     try {
-      // Verificar se já existe um registro para o usuário
       const { data, error: fetchError } = await supabase
         .from('user_settings')
         .select('id')
         .eq('user_id', user.id)
         .single();
         
-      if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 = not found
+      if (fetchError && fetchError.code !== 'PGRST116') {
         throw fetchError;
       }
       
-      // Preparar dados para salvar
       const settingsData = {
         user_id: user.id,
         task_reminders: notifications.taskReminders,
@@ -267,7 +255,6 @@ export default function Settings() {
       let error;
       
       if (data) {
-        // Atualizar registro existente
         const result = await supabase
           .from('user_settings')
           .update(settingsData)
@@ -275,7 +262,6 @@ export default function Settings() {
           
         error = result.error;
       } else {
-        // Criar novo registro
         const result = await supabase
           .from('user_settings')
           .insert({
@@ -288,7 +274,6 @@ export default function Settings() {
       
       if (error) throw error;
       
-      // Solicitar permissão para notificações do navegador
       if (notifications.taskReminders || notifications.projectUpdates) {
         if ('Notification' in window) {
           const permission = await Notification.requestPermission();
@@ -339,11 +324,6 @@ export default function Settings() {
     }
   };
   
-  // Navegar para checkout
-  const handleUpgradeClick = () => {
-    navigate('/checkout');
-  };
-  
   return (
     <div className="space-y-6">
       <div>
@@ -358,7 +338,6 @@ export default function Settings() {
           <TabsTrigger value="profile">Perfil</TabsTrigger>
           <TabsTrigger value="password">Senha</TabsTrigger>
           <TabsTrigger value="notifications">Notificações</TabsTrigger>
-          <TabsTrigger value="plan">Plano</TabsTrigger>
         </TabsList>
         
         <TabsContent value="profile" className="space-y-6">
@@ -607,103 +586,6 @@ export default function Settings() {
                 </div>
               </div>
             </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="plan" className="space-y-6">
-          <Card className="card-soft">
-            <CardHeader>
-              <CardTitle>Seu plano atual</CardTitle>
-              <CardDescription>
-                Gerencie sua assinatura e veja os recursos disponíveis
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-medium text-lg">
-                      {profile?.plan_status === 'pro' ? 'Plano Pro' : 'Plano Gratuito'}
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      {profile?.plan_status === 'pro' 
-                        ? 'Você tem acesso a todos os recursos premium' 
-                        : 'Acesso limitado aos recursos básicos'}
-                    </p>
-                  </div>
-                  <Badge variant={profile?.plan_status === 'pro' ? 'default' : 'outline'}>
-                    {profile?.plan_status === 'pro' ? 'Ativo' : 'Gratuito'}
-                  </Badge>
-                </div>
-                
-                <Separator />
-                
-                <div className="space-y-4">
-                  <h4 className="font-medium">Recursos incluídos:</h4>
-                  <ul className="space-y-2">
-                    <li className="flex items-center">
-                      <CheckCircle className="h-4 w-4 text-primary mr-2" />
-                      <span>Tarefas ilimitadas</span>
-                    </li>
-                    <li className="flex items-center">
-                      <CheckCircle className="h-4 w-4 text-primary mr-2" />
-                      <span>Projetos básicos</span>
-                    </li>
-                    {profile?.plan_status === 'pro' ? (
-                      <>
-                        <li className="flex items-center">
-                          <CheckCircle className="h-4 w-4 text-primary mr-2" />
-                          <span>Projetos ilimitados</span>
-                        </li>
-                        <li className="flex items-center">
-                          <CheckCircle className="h-4 w-4 text-primary mr-2" />
-                          <span>Colaboração em tempo real</span>
-                        </li>
-                        <li className="flex items-center">
-                          <CheckCircle className="h-4 w-4 text-primary mr-2" />
-                          <span>Analytics avançado</span>
-                        </li>
-                        <li className="flex items-center">
-                          <CheckCircle className="h-4 w-4 text-primary mr-2" />
-                          <span>Suporte prioritário</span>
-                        </li>
-                      </>
-                    ) : (
-                      <>
-                        <li className="flex items-center text-muted-foreground">
-                          <AlertCircle className="h-4 w-4 mr-2" />
-                          <span>Projetos ilimitados</span>
-                        </li>
-                        <li className="flex items-center text-muted-foreground">
-                          <AlertCircle className="h-4 w-4 mr-2" />
-                          <span>Colaboração em tempo real</span>
-                        </li>
-                        <li className="flex items-center text-muted-foreground">
-                          <AlertCircle className="h-4 w-4 mr-2" />
-                          <span>Analytics avançado</span>
-                        </li>
-                        <li className="flex items-center text-muted-foreground">
-                          <AlertCircle className="h-4 w-4 mr-2" />
-                          <span>Suporte prioritário</span>
-                        </li>
-                      </>
-                    )}
-                  </ul>
-                </div>
-              </div>
-            </CardContent>
-            <CardFooter className="flex justify-between">
-              {profile?.plan_status === 'pro' ? (
-                <Button variant="outline" className="w-full">
-                  Gerenciar assinatura
-                </Button>
-              ) : (
-                <Button onClick={handleUpgradeClick} className="w-full btn-gradient">
-                  <CreditCard className="h-4 w-4 mr-2" />
-                  Fazer Upgrade Agora
-                </Button>
-              )}
-            </CardFooter>
           </Card>
         </TabsContent>
       </Tabs>

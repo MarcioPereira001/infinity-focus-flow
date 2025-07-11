@@ -34,25 +34,43 @@ export default function Projects() {
       setIsLoading(true);
       
       try {
-        // Buscar projetos que o usuário é proprietário ou membro
-        const { data, error } = await supabase
+        // Buscar projetos que o usuário é proprietário
+        const { data: ownedProjects, error: ownedError } = await supabase
           .from('projects')
-          .select(`
-            *,
-            project_members!inner(user_id)
-          `)
-          .or(`owner_id.eq.${user.id},project_members.user_id.eq.${user.id}`)
+          .select('*')
+          .eq('owner_id', user.id)
           .order('created_at', { ascending: false });
-          
-        if (error) throw error;
         
-        setProjects(data || []);
+        if (ownedError) throw ownedError;
+
+        // Buscar projetos onde o usuário é membro
+        const { data: memberProjects, error: memberError } = await supabase
+          .from('project_members')
+          .select(`
+            project_id,
+            projects:project_id (*)
+          `)
+          .eq('user_id', user.id);
+        
+        if (memberError) throw memberError;
+
+        // Combinar projetos próprios e projetos onde é membro
+        const allProjects = [...(ownedProjects || [])];
+        
+        // Adicionar projetos onde é membro (evitando duplicatas)
+        memberProjects?.forEach((member: any) => {
+          if (member.projects && !allProjects.find(p => p.id === member.projects.id)) {
+            allProjects.push(member.projects);
+          }
+        });
+        
+        setProjects(allProjects);
         
         // Buscar membros e contagem de tarefas para cada projeto
-        if (data && data.length > 0) {
+        if (allProjects.length > 0) {
           await Promise.all([
-            fetchProjectMembers(data.map(p => p.id)),
-            fetchProjectTaskCounts(data.map(p => p.id))
+            fetchProjectMembers(allProjects.map(p => p.id)),
+            fetchProjectTaskCounts(allProjects.map(p => p.id))
           ]);
         }
       } catch (error) {
@@ -113,7 +131,6 @@ export default function Projects() {
         
       if (error) throw error;
       
-      // Agrupar membros por projeto
       const membersByProject: Record<string, any[]> = {};
       
       data?.forEach(member => {
@@ -144,7 +161,6 @@ export default function Projects() {
         
       if (error) throw error;
       
-      // Criar mapa de contagem de tarefas por projeto
       const taskCountsByProject: Record<string, number> = {};
       
       data?.forEach(item => {
@@ -162,7 +178,6 @@ export default function Projects() {
   
   // Manipular criação de projeto
   const handleProjectCreated = (newProject: any) => {
-    // A atualização é feita automaticamente pela subscription
     toast({
       title: "Projeto criado",
       description: "Seu projeto foi criado com sucesso",
@@ -171,7 +186,6 @@ export default function Projects() {
   
   // Manipular atualização de projeto
   const handleProjectUpdated = (updatedProject: any) => {
-    // A atualização é feita automaticamente pela subscription
     toast({
       title: "Projeto atualizado",
       description: "Seu projeto foi atualizado com sucesso",
@@ -183,7 +197,6 @@ export default function Projects() {
     if (!projectToDelete) return;
     
     try {
-      // Excluir projeto
       const { error } = await supabase
         .from('projects')
         .delete()
@@ -191,7 +204,6 @@ export default function Projects() {
         
       if (error) throw error;
       
-      // Atualizar lista de projetos
       setProjects(prev => prev.filter(project => project.id !== projectToDelete.id));
       
       toast({
