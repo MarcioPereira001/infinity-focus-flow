@@ -116,32 +116,37 @@ export default function Projects() {
   // Buscar membros dos projetos
   const fetchProjectMembers = async (projectIds: string[]) => {
     try {
-      const { data, error } = await supabase
+      // First get the project members
+      const { data: membersData, error: membersError } = await supabase
         .from('project_members')
-        .select(`
-          project_id,
-          user_id,
-          role,
-          profiles(
-            full_name,
-            avatar_url
-          )
-        `)
+        .select('project_id, user_id, role')
         .in('project_id', projectIds);
         
-      if (error) throw error;
+      if (membersError) throw membersError;
+      
+      // Then get profiles for all user_ids
+      const userIds = membersData?.map(m => m.user_id) || [];
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('user_id, full_name, avatar_url')
+        .in('user_id', userIds);
+        
+      if (profilesError) throw profilesError;
       
       const membersByProject: Record<string, any[]> = {};
       
-      data?.forEach(member => {
+      membersData?.forEach(member => {
         if (!membersByProject[member.project_id]) {
           membersByProject[member.project_id] = [];
         }
+        
+        const profile = profilesData?.find(p => p.user_id === member.user_id);
+        
         membersByProject[member.project_id].push({
           id: member.user_id,
           role: member.role,
-          full_name: member.profiles?.full_name || 'Usuário',
-          avatar_url: member.profiles?.avatar_url
+          full_name: profile?.full_name || 'Usuário',
+          avatar_url: profile?.avatar_url
         });
       });
       

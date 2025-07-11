@@ -157,20 +157,44 @@ export function useProject(projectId?: string) {
 
       if (columnsError) throw columnsError;
 
-      // Fetch members with profile data using correct syntax
+      // Fetch members with profile data - using explicit joins
       const { data: membersData, error: membersError } = await supabase
         .from('project_members')
         .select(`
           *,
-          profiles(*)
+          profiles!project_members_user_id_profiles_user_id_fkey(*)
         `)
         .eq('project_id', projectId);
 
-      if (membersError) throw membersError;
+      if (membersError) {
+        console.error('Error fetching members:', membersError);
+        // If the explicit foreign key doesn't work, try a simpler approach
+        const { data: simpleMembersData, error: simpleMembersError } = await supabase
+          .from('project_members')
+          .select('*')
+          .eq('project_id', projectId);
+
+        if (simpleMembersError) throw simpleMembersError;
+
+        // Fetch profiles separately and merge
+        const memberIds = simpleMembersData?.map(m => m.user_id) || [];
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('*')
+          .in('user_id', memberIds);
+
+        const membersWithProfiles = simpleMembersData?.map(member => ({
+          ...member,
+          profiles: profilesData?.find(p => p.user_id === member.user_id) || null
+        })) || [];
+
+        setMembers(membersWithProfiles);
+      } else {
+        setMembers(membersData || []);
+      }
 
       setProject(projectData);
       setColumns(columnsData || []);
-      setMembers(membersData || []);
     } catch (error) {
       console.error('Error fetching project:', error);
     } finally {
@@ -214,14 +238,23 @@ export function useProject(projectId?: string) {
           user_id: profile.user_id,
           role,
         })
-        .select(`
-          *,
-          profiles(*)
-        `)
+        .select()
         .single();
 
       if (!error && data) {
-        setMembers(prev => [...prev, data]);
+        // Fetch the profile data for the new member
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', data.user_id)
+          .single();
+
+        const newMember = {
+          ...data,
+          profiles: profileData || null
+        };
+
+        setMembers(prev => [...prev, newMember]);
       }
 
       return { data, error };
