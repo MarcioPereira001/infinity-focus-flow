@@ -129,8 +129,11 @@ export type Database = {
           description: string | null
           end_date: string | null
           id: string
+          priority: string | null
+          project_ids: string[] | null
           start_date: string | null
           target_value: number | null
+          task_ids: string[] | null
           title: string
           updated_at: string | null
           user_id: string
@@ -141,8 +144,11 @@ export type Database = {
           description?: string | null
           end_date?: string | null
           id?: string
+          priority?: string | null
+          project_ids?: string[] | null
           start_date?: string | null
           target_value?: number | null
+          task_ids?: string[] | null
           title: string
           updated_at?: string | null
           user_id: string
@@ -153,8 +159,11 @@ export type Database = {
           description?: string | null
           end_date?: string | null
           id?: string
+          priority?: string | null
+          project_ids?: string[] | null
           start_date?: string | null
           target_value?: number | null
+          task_ids?: string[] | null
           title?: string
           updated_at?: string | null
           user_id?: string
@@ -301,23 +310,38 @@ export type Database = {
       projects: {
         Row: {
           created_at: string
+          description: string | null
+          end_date: string | null
           id: string
+          is_indefinite: boolean | null
           name: string
           owner_id: string
+          priority: string | null
+          start_date: string | null
           updated_at: string
         }
         Insert: {
           created_at?: string
+          description?: string | null
+          end_date?: string | null
           id?: string
+          is_indefinite?: boolean | null
           name: string
           owner_id: string
+          priority?: string | null
+          start_date?: string | null
           updated_at?: string
         }
         Update: {
           created_at?: string
+          description?: string | null
+          end_date?: string | null
           id?: string
+          is_indefinite?: boolean | null
           name?: string
           owner_id?: string
+          priority?: string | null
+          start_date?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -335,10 +359,13 @@ export type Database = {
           created_at: string
           description: string | null
           due_date: string | null
+          goal_ids: string[] | null
           id: string
+          is_indefinite: boolean | null
           priority: string | null
           project_id: string | null
           responsible_id: string | null
+          start_date: string | null
           status: string | null
           tags: string[] | null
           title: string
@@ -349,10 +376,13 @@ export type Database = {
           created_at?: string
           description?: string | null
           due_date?: string | null
+          goal_ids?: string[] | null
           id?: string
+          is_indefinite?: boolean | null
           priority?: string | null
           project_id?: string | null
           responsible_id?: string | null
+          start_date?: string | null
           status?: string | null
           tags?: string[] | null
           title: string
@@ -363,10 +393,13 @@ export type Database = {
           created_at?: string
           description?: string | null
           due_date?: string | null
+          goal_ids?: string[] | null
           id?: string
+          is_indefinite?: boolean | null
           priority?: string | null
           project_id?: string | null
           responsible_id?: string | null
+          start_date?: string | null
           status?: string | null
           tags?: string[] | null
           title?: string

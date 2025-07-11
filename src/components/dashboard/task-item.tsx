@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -10,6 +11,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal, Edit, Trash2, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 
 export interface Task {
   id: string;
@@ -34,10 +37,56 @@ interface TaskItemProps {
 
 export function TaskItem({ task, onToggleComplete, onEdit, onDelete, onClick }: TaskItemProps) {
   const [isCompleted, setIsCompleted] = useState(task.status === 'Concluído');
+  const [isUpdating, setIsUpdating] = useState(false);
 
-  const handleToggleComplete = () => {
-    setIsCompleted(!isCompleted);
-    onToggleComplete?.(task.id);
+  const handleToggleComplete = async (event: React.MouseEvent) => {
+    event.stopPropagation();
+    
+    if (isUpdating) return;
+    
+    setIsUpdating(true);
+    const newStatus = isCompleted ? 'Novo' : 'Concluído';
+    
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .update({ 
+          status: newStatus,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', task.id);
+      
+      if (error) throw error;
+      
+      setIsCompleted(!isCompleted);
+      
+      if (onToggleComplete) {
+        onToggleComplete(task.id);
+      }
+      
+      toast({
+        title: newStatus === 'Concluído' ? "Tarefa concluída" : "Tarefa reaberta",
+        description: newStatus === 'Concluído' ? 
+          "A tarefa foi marcada como concluída" : 
+          "A tarefa foi reaberta",
+      });
+      
+    } catch (error: any) {
+      console.error('Error updating task:', error);
+      toast({
+        title: "Erro ao atualizar tarefa",
+        description: error.message || "Não foi possível atualizar o status da tarefa",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleCardClick = () => {
+    if (onClick) {
+      onClick();
+    }
   };
 
   const getPriorityClass = (priority: string) => {
@@ -69,17 +118,19 @@ export function TaskItem({ task, onToggleComplete, onEdit, onDelete, onClick }: 
   return (
     <div 
       className={cn(
-        "card-soft p-4 transition-all duration-200 cursor-pointer",
+        "card-soft p-4 transition-all duration-200 cursor-pointer hover:shadow-md",
         getPriorityClass(task.priority),
         isCompleted && "opacity-60"
       )}
-      onClick={onClick}
+      onClick={handleCardClick}
     >
       <div className="flex items-start space-x-4">
         <Checkbox
           checked={isCompleted}
           onCheckedChange={handleToggleComplete}
+          disabled={isUpdating}
           className="mt-1"
+          onClick={(e) => e.stopPropagation()}
         />
         
         <div className="flex-1 space-y-2">
@@ -92,18 +143,24 @@ export function TaskItem({ task, onToggleComplete, onEdit, onDelete, onClick }: 
             </h3>
             
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
+              <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                 <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => onEdit?.(task.id)}>
+                <DropdownMenuItem onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit?.(task.id);
+                }}>
                   <Edit className="h-4 w-4 mr-2" />
                   Editar
                 </DropdownMenuItem>
                 <DropdownMenuItem 
-                  onClick={() => onDelete?.(task.id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete?.(task.id);
+                  }}
                   className="text-destructive"
                 >
                   <Trash2 className="h-4 w-4 mr-2" />
@@ -143,6 +200,10 @@ export function TaskItem({ task, onToggleComplete, onEdit, onDelete, onClick }: 
                 {tag}
               </Badge>
             ))}
+            
+            <Badge variant="outline" className="text-xs">
+              {task.status}
+            </Badge>
           </div>
         </div>
       </div>
